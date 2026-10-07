@@ -123,7 +123,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   <header>
     <div class="head-row">
       <div>
-        <div class="eyebrow" id="briefMeta">Weekday mornings · 7:00 AM ET</div>
+        <div class="eyebrow" id="briefMeta">Weekday mornings · 9:00 AM PT</div>
         <h1 id="briefTitle">Morning Market Brief</h1>
       </div>
       <div class="picker" id="pickerBox" hidden>
@@ -138,7 +138,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   <section aria-labelledby="recsH">
     <div class="sec-head">
       <h2 id="recsH">Today's calls</h2>
-      <span class="eyebrow">Long-term · quality first · yield counts</span>
+      <span class="eyebrow">Long-term · growth plus dividend income</span>
     </div>
     <div class="recs" id="recs"><div class="empty">Buy, add, trim and sell ideas appear here with the reasoning behind each one.</div></div>
   </section>
@@ -202,7 +202,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     let meta = "Morning Market Brief";
     if (b.generatedAt) {
       const t = new Date(b.generatedAt);
-      if (!isNaN(t)) meta += " · written " + t.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " ET";
+      if (!isNaN(t)) meta += " · written " + t.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles" }) + " PT";
     }
     $("briefMeta").textContent = meta;
     $("mood").textContent = b.marketSummary || "";
@@ -241,6 +241,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       if (r.sector) facts.append(el("span", "muted", r.sector));
       if (r.conviction) facts.append(el("span", "muted", r.conviction + " conviction"));
       if (r.risk) facts.append(el("span", "muted", r.risk + " risk"));
+      if (r.tvRating) facts.append(el("span", "muted", "TradingView: " + r.tvRating));
       c.append(top, facts, el("p", null, r.rationale || ""));
       if (r.watchFor) c.append(el("div", "watch", "Watch: " + r.watchFor));
       return c;
@@ -270,6 +271,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       const view = el("td", "note");
       if (q.verdict) { const v = String(q.verdict).toUpperCase(); view.append(el("span", "chip " + v, v), document.createTextNode(" " + (q.note || ""))); }
       else view.textContent = lb ? "Priced in the next brief." : "";
+      if (q.tvRating) view.append(el("div", "eyebrow", "TradingView: " + q.tvRating + (q.rsi != null ? " · RSI " + q.rsi : "")));
       const act = el("td"); const wrap = el("span", "row-actions");
       if (pendingDelete === h.ticker) {
         const yes = el("button", "btn danger", "Remove"); yes.type = "button"; yes.onclick = () => removeHolding(h.ticker);
