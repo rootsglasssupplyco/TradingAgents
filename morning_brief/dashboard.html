@@ -42,6 +42,8 @@
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
 .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 36px; }
+
+.wrap > * { min-width: 0; }
 h1, h2 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
 h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; line-height: 1.1; }
 h2 { font-size: 1.3rem; font-weight: 700; }
@@ -68,9 +70,9 @@ header { display: grid; gap: 14px; }
 .sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
 
 /* Recommendations */
-.recs { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.recs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 14px; }
 .rec { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
-.rec-top { display: flex; align-items: center; gap: 10px; }
+.rec-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .tkr { font-family: var(--f-data); font-weight: 500; font-size: 1.05rem; }
 .rec-name { color: var(--muted); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
 .chip { font-family: var(--f-data); font-size: 0.72rem; font-weight: 500; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
@@ -81,6 +83,36 @@ header { display: grid; gap: 14px; }
 .facts { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.82rem; }
 .facts span { white-space: nowrap; }
 .rec p { margin: 0; }
+.setup { font-family: var(--f-data); font-size: 0.72rem; color: var(--accent); background: var(--accent-soft); padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+.amount { font-family: var(--f-data); font-weight: 500; }
+.rec .exit { font-size: 0.85rem; }
+.plan { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; margin-bottom: 14px; }
+.plan-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+.plan-bar { display: flex; height: 10px; gap: 2px; border-radius: 5px; overflow: hidden; background: var(--flat-soft); }
+.plan-bar span { background: var(--accent); min-width: 2px; }
+.plan-bar span.park { background: var(--muted); opacity: 0.45; }
+.plan-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 18px; margin: 0; padding: 0; list-style: none; }
+.plan-items li { display: grid; gap: 2px; font-size: 0.88rem; min-width: 0; }
+.plan-items b { font-family: var(--f-data); font-weight: 500; }
+.charts { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; margin-bottom: 14px; }
+@media (max-width: 760px) { .charts { grid-template-columns: minmax(0, 1fr); } }
+.chart-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; display: grid; gap: 8px; align-content: start; }
+.chart-card h3 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+.chart-wrap { position: relative; }
+.chart-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-wrap .grid { stroke: var(--line); stroke-width: 1; }
+.chart-wrap .axis { fill: var(--muted); font-family: var(--f-data); font-size: 11px; }
+.chart-wrap .line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart-wrap .area { fill: var(--accent); opacity: 0.08; }
+.chart-wrap .pt { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.chart-wrap .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 0.78rem; padding: 6px 8px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -110%); }
+.bars { display: grid; gap: 8px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 9em) minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 0.84rem; }
+.bar-row .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { height: 12px; }
+.bar-fill { height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
+.bar-row .val { font-family: var(--f-data); font-variant-numeric: tabular-nums; color: var(--muted); text-align: right; }
 .rec .watch { font-size: 0.85rem; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 8px; }
 
 /* Holdings */
@@ -138,8 +170,9 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   <section aria-labelledby="recsH">
     <div class="sec-head">
       <h2 id="recsH">Today's calls</h2>
-      <span class="eyebrow">Long-term · growth plus dividend income</span>
+      <span class="eyebrow">Buys only on value or early-uptrend setups</span>
     </div>
+    <div class="plan" id="plan" hidden></div>
     <div class="recs" id="recs"><div class="empty">Buy, add, trim and sell ideas appear here with the reasoning behind each one.</div></div>
   </section>
 
@@ -149,6 +182,17 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       <span class="eyebrow" id="priceAsOf">Prices from the latest brief</span>
     </div>
     <div class="totals" id="totals" hidden></div>
+    <div class="charts">
+      <div class="chart-card">
+        <h3>Portfolio value</h3>
+        <div class="chart-wrap" id="valueChart"><p class="muted">The value line fills in as briefs arrive.</p></div>
+        <p class="eyebrow" id="valueNote"></p>
+      </div>
+      <div class="chart-card">
+        <h3>Where your money is</h3>
+        <div class="bars" id="mixBars"><p class="muted">Your mix appears once holdings are priced.</p></div>
+      </div>
+    </div>
     <div class="table-box">
       <table>
         <thead><tr><th>Ticker</th><th>Shares</th><th>Avg cost</th><th>Price</th><th>Day</th><th>Value</th><th>Gain</th><th>Yield</th><th>Today's view</th><th></th></tr></thead>
@@ -186,6 +230,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   let holdings = [];
   let db = null;
   let pendingDelete = null;
+  let backfill = null;
 
   const current = () => briefs.find(b => b.id === selectedId) || briefs[0] || null;
   const latest = () => briefs[0] || null;
@@ -218,7 +263,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
 
   function renderPicker() {
     const sel = $("briefPick"); sel.replaceChildren();
-    briefs.forEach(b => { const o = el("option", null, fmtDate(b.date)); o.value = b.id; sel.append(o); });
+    briefs.slice(0, 30).forEach(b => { const o = el("option", null, fmtDate(b.date)); o.value = b.id; sel.append(o); });
     sel.value = current() ? current().id : "";
     $("pickerBox").hidden = briefs.length < 2;
   }
@@ -235,16 +280,104 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       const top = el("div", "rec-top");
       const action = String(r.action || "HOLD").toUpperCase();
       top.append(el("span", "chip " + action, action), el("span", "tkr", r.ticker), el("span", "rec-name", r.name || ""));
+      if (r.setup) top.append(el("span", "setup", r.setup));
       const facts = el("div", "facts");
+      if (r.amount) facts.append(el("span", "amount", "Put in " + money(r.amount)));
       if (r.price != null) facts.append(el("span", "num", money(r.price)));
-      if (r.dividendYield != null) facts.append(el("span", "num", "Yield " + Number(r.dividendYield).toFixed(2) + "%"));
+      if (r.upsidePct != null) facts.append(el("span", "num " + signCls(r.upsidePct), "Analyst target " + pct(r.upsidePct)));
+      if (r.dividendYield) facts.append(el("span", "num", "Yield " + Number(r.dividendYield).toFixed(2) + "%"));
       if (r.sector) facts.append(el("span", "muted", r.sector));
       if (r.conviction) facts.append(el("span", "muted", r.conviction + " conviction"));
       if (r.risk) facts.append(el("span", "muted", r.risk + " risk"));
       if (r.tvRating) facts.append(el("span", "muted", "TradingView: " + r.tvRating));
       c.append(top, facts, el("p", null, r.rationale || ""));
+      if (r.exitPlan) c.append(el("p", "exit", "Exit plan: " + r.exitPlan));
       if (r.watchFor) c.append(el("div", "watch", "Watch: " + r.watchFor));
       return c;
+    }));
+  }
+
+  function renderPlan() {
+    const b = current(), box = $("plan"), mp = b && b.monthlyPlan;
+    if (!mp || !(mp.items || []).length) { box.hidden = true; return; }
+    const total = mp.budget || mp.items.reduce((s, i) => s + (i.amount || 0), 0);
+    const head = el("div", "plan-head");
+    head.append(el("h3", null, "This month's " + money(total)), el("span", "eyebrow", mp.note || ""));
+    head.querySelector("h3").style.margin = "0";
+    const bar = el("div", "plan-bar");
+    const list = el("ul", "plan-items");
+    mp.items.forEach(i => {
+      const seg = el("span", i.park ? "park" : ""); seg.style.flex = String(i.amount || 0); seg.title = i.ticker + " " + money(i.amount); bar.append(seg);
+      const li = el("li"); const t = el("div"); t.append(el("b", null, i.ticker + " · " + money(i.amount)));
+      li.append(t, el("span", "muted", i.why || "")); list.append(li);
+    });
+    box.replaceChildren(head, bar, list); box.hidden = false;
+  }
+
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const svgEl = (tag, attrs) => { const n = document.createElementNS(SVGNS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+  const shortDate = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
+  const compact = (v) => "$" + (v >= 1000 ? (v / 1000).toFixed(v >= 100000 ? 0 : 1) + "k" : Math.round(v));
+
+  function renderValueChart() {
+    const pts = new Map();
+    (backfill && backfill.points || []).forEach(p => pts.set(p.date, { date: p.date, value: p.value, est: true }));
+    briefs.forEach(b => { if (b.portfolio && b.portfolio.value) pts.set(b.date, { date: b.date, value: b.portfolio.value, est: false }); });
+    const data = [...pts.values()].sort((a, b) => a.date.localeCompare(b.date));
+    const box = $("valueChart");
+    if (data.length < 2) return;
+    const W = 560, H = 230, L = 52, R = 14, T = 12, B = 26;
+    const t0 = Date.parse(data[0].date), t1 = Date.parse(data[data.length - 1].date);
+    const vals = data.map(d => d.value);
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const step = Math.pow(10, Math.floor(Math.log10((hi - lo) || hi))) / 2 || 1000;
+    lo = Math.floor(lo * 0.98 / step) * step; hi = Math.ceil(hi * 1.01 / step) * step;
+    const x = (d) => L + (Date.parse(d) - t0) / ((t1 - t0) || 1) * (W - L - R);
+    const y = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Portfolio value over time" });
+    const ticks = 4;
+    for (let i = 0; i <= ticks; i++) {
+      const v = lo + (hi - lo) * i / ticks;
+      svg.append(svgEl("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: "grid" }));
+      const tx = svgEl("text", { x: L - 8, y: y(v) + 4, "text-anchor": "end", class: "axis" }); tx.textContent = compact(v); svg.append(tx);
+    }
+    [data[0], data[Math.floor(data.length / 2)], data[data.length - 1]].forEach((d, i) => {
+      const tx = svgEl("text", { x: x(d.date), y: H - 6, "text-anchor": i === 0 ? "start" : i === 2 ? "end" : "middle", class: "axis" }); tx.textContent = shortDate(d.date); svg.append(tx);
+    });
+    const line = data.map((d, i) => (i ? "L" : "M") + x(d.date).toFixed(1) + " " + y(d.value).toFixed(1)).join(" ");
+    svg.append(svgEl("path", { d: line + ` L${x(data[data.length - 1].date)} ${H - B} L${x(data[0].date)} ${H - B} Z`, class: "area" }));
+    svg.append(svgEl("path", { d: line, class: "line" }));
+    data.forEach((d, i) => { if (data.length <= 40 || i === data.length - 1) svg.append(svgEl("circle", { cx: x(d.date), cy: y(d.value), r: i === data.length - 1 ? 5 : 4, class: "pt" })); });
+    const cross = svgEl("line", { y1: T, y2: H - B, class: "cross", visibility: "hidden" }); svg.append(cross);
+    const tip = el("div", "tip"); tip.hidden = true;
+    const hit = svgEl("rect", { x: L, y: T, width: W - L - R, height: H - T - B, fill: "transparent" });
+    const move = (ev) => {
+      const r = svg.getBoundingClientRect(); const px = (ev.clientX - r.left) * W / r.width;
+      let best = data[0]; data.forEach(d => { if (Math.abs(x(d.date) - px) < Math.abs(x(best.date) - px)) best = d; });
+      cross.setAttribute("x1", x(best.date)); cross.setAttribute("x2", x(best.date)); cross.setAttribute("visibility", "visible");
+      tip.textContent = shortDate(best.date) + " · " + money(best.value) + (best.est ? " (est.)" : "");
+      tip.style.left = (x(best.date) / W * 100) + "%"; tip.style.top = (y(best.value) / H * r.height) + "px"; tip.hidden = false;
+    };
+    hit.addEventListener("pointermove", move); hit.addEventListener("pointerdown", move);
+    hit.addEventListener("pointerleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
+    svg.append(hit);
+    box.replaceChildren(svg, tip);
+    const first = data[0], last = data[data.length - 1], chg = (last.value / first.value - 1) * 100;
+    $("valueNote").textContent = pct(chg) + " since " + shortDate(first.date) + (data.some(d => d.est) ? " · earlier points estimate today's holdings at past prices" : "");
+  }
+
+  function renderMix() {
+    const lb = latest(), quotes = (lb && lb.quotes) || {}, box = $("mixBars");
+    const groups = {}; let total = 0;
+    holdings.forEach(h => { const q = quotes[h.ticker]; if (!q || q.price == null) return; const v = q.price * h.shares; total += v; const g = q.bucket || "Other"; groups[g] = (groups[g] || 0) + v; });
+    if (!total) return;
+    const rows = Object.entries(groups).sort((a, b) => b[1] - a[1]);
+    const max = rows[0][1];
+    box.replaceChildren(...rows.map(([g, v]) => {
+      const row = el("div", "bar-row"); row.title = g + ": " + money(v) + " (" + (v / total * 100).toFixed(1) + "%)";
+      const track = el("div", "bar-track"); const fill = el("div", "bar-fill"); fill.style.width = (v / max * 100) + "%"; track.append(fill);
+      row.append(el("span", "lbl", g), track, el("span", "val", (v / total * 100).toFixed(0) + "% · " + compact(v)));
+      return row;
     }));
   }
 
@@ -324,7 +457,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     }));
   }
 
-  function renderAll() { renderHeader(); renderPicker(); renderRecs(); renderHoldings(); renderNews(); }
+  function renderAll() { renderHeader(); renderPicker(); renderPlan(); renderRecs(); renderHoldings(); renderNews(); renderValueChart(); renderMix(); }
 
   function setMsg(text, err) { const m = $("formMsg"); m.textContent = text; m.className = "msg" + (err ? " err" : ""); }
 
@@ -334,7 +467,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     catch (e) { setMsg("Could not remove " + ticker + ": " + (e && e.message || "try again."), true); renderHoldings(); }
   }
 
-  $("briefPick").addEventListener("change", (e) => { selectedId = e.target.value; renderHeader(); renderRecs(); renderNews(); });
+  $("briefPick").addEventListener("change", (e) => { selectedId = e.target.value; renderHeader(); renderPlan(); renderRecs(); renderNews(); });
 
   $("addForm").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -357,15 +490,16 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   (async () => {
     db = window.claude && window.claude.use ? await window.claude.use("db") : null;
     if (!db) { $("fSave").disabled = true; setMsg("Open this page in claude.ai while signed in to see your brief and holdings.", true); return; }
-    db.collection("briefs").orderBy("date", "desc").limit(30).onSnapshot((snap) => {
+    db.collection("briefs").orderBy("date", "desc").limit(260).onSnapshot((snap) => {
       briefs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if (selectedId && !briefs.some(b => b.id === selectedId)) selectedId = null;
       renderAll();
     }, () => setMsg("Lost the connection to your briefs. Reload the page.", true));
     db.collection("holdings").onSnapshot((snap) => {
       holdings = snap.docs.map(d => d.data()).filter(h => h && h.ticker).sort((a, b) => a.ticker.localeCompare(b.ticker));
-      renderHoldings();
+      renderHoldings(); renderMix();
     }, () => setMsg("Lost the connection to your holdings. Reload the page.", true));
+    db.doc("history/backfill").onSnapshot((snap) => { backfill = snap.exists ? snap.data() : null; renderValueChart(); }, () => {});
   })();
 })();
 </script>
