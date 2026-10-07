@@ -19,6 +19,7 @@
   --warn: #9a6200;
   --warn-soft: #fbf0d9;
   --flat-soft: #eceff4;
+  --on-accent: #ffffff;
   --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --f-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -28,7 +29,7 @@
     --bg: #0e131c; --surface: #161d29; --ink: #e7ebf2; --muted: #98a2b4; --line: #283244;
     --accent: #7d97ff; --accent-soft: #1d2747;
     --up: #4cc985; --up-soft: #12301f; --down: #ff7b72; --down-soft: #3a1714;
-    --warn: #f0b44c; --warn-soft: #362a10; --flat-soft: #222b3a;
+    --warn: #f0b44c; --warn-soft: #362a10; --flat-soft: #222b3a; --on-accent: #0e131c;
     color-scheme: dark;
   }
 }
@@ -36,7 +37,7 @@
   --bg: #0e131c; --surface: #161d29; --ink: #e7ebf2; --muted: #98a2b4; --line: #283244;
   --accent: #7d97ff; --accent-soft: #1d2747;
   --up: #4cc985; --up-soft: #12301f; --down: #ff7b72; --down-soft: #3a1714;
-  --warn: #f0b44c; --warn-soft: #362a10; --flat-soft: #222b3a;
+  --warn: #f0b44c; --warn-soft: #362a10; --flat-soft: #222b3a; --on-accent: #0e131c;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -146,15 +147,15 @@ label.bought { display: inline-flex; gap: 6px; align-items: center; font-size: 0
 .total b { display: block; font-family: var(--f-data); font-size: 1.35rem; font-weight: 500; }
 .table-box { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-th, td { padding: 10px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th, td { padding: 10px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
 th { font-family: var(--f-data); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 500; }
 th:first-child, td:first-child { text-align: left; }
-td.note { text-align: left; white-space: normal; min-width: 220px; color: var(--muted); font-size: 0.85rem; }
+td.note { text-align: left; white-space: normal; min-width: 200px; max-width: 320px; color: var(--muted); font-size: 0.85rem; }
 tbody tr:last-child td { border-bottom: 0; }
 .row-actions { display: inline-flex; gap: 6px; }
-.btn { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font-weight: 500; cursor: pointer; }
+.btn { background: var(--accent); color: var(--on-accent); border: 0; border-radius: 6px; padding: 8px 14px; font-weight: 500; cursor: pointer; }
 .btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); padding: 4px 10px; font-size: 0.82rem; }
-.btn.danger { background: var(--down); color: #fff; padding: 4px 10px; font-size: 0.82rem; }
+.btn.danger { background: var(--down); color: var(--on-accent); padding: 4px 10px; font-size: 0.82rem; }
 .btn:disabled { opacity: 0.5; cursor: default; }
 form.add { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 14px; }
 form.add label { display: grid; gap: 4px; font-size: 0.78rem; color: var(--muted); }
@@ -173,6 +174,24 @@ form.add input { background: var(--surface); color: var(--ink); border: 1px soli
 .tags { display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.78rem; }
 .tags .t { font-family: var(--f-data); background: var(--accent-soft); color: var(--accent); padding: 1px 6px; border-radius: 3px; }
 
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.status { margin: 0; font-size: 0.85rem; color: var(--down); }
+.back { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; text-decoration: underline; }
+details.debate { font-size: 0.85rem; border-top: 1px dashed var(--line); padding-top: 8px; }
+details.debate summary { cursor: pointer; color: var(--accent); }
+details.debate p { margin: 6px 0 0; }
+.lessons { margin: 0 0 14px; padding-left: 18px; font-size: 0.9rem; }
+form.add .chk { display: flex; flex-direction: row; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--ink); }
+form.add .chk input { width: auto; }
+/* Tables become stacked cards on phones */
+@media (max-width: 600px) {
+  table.stack thead { display: none; }
+  table.stack, table.stack tbody, table.stack tr, table.stack td { display: block; width: 100%; }
+  table.stack tr { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+  table.stack td { border: 0; padding: 2px 0; text-align: left; white-space: normal; min-width: 0; max-width: none; }
+  table.stack td[data-label]::before { content: attr(data-label); display: block; font-family: var(--f-data); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+  table.stack td.wide { grid-column: 1 / -1; }
+}
 .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 10px; padding: 22px; color: var(--muted); }
 footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
 </style>
@@ -191,11 +210,13 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     </div>
     <p class="mood" id="mood">Waiting for the first brief. It is written each weekday before the open and lands here and in your inbox.</p>
     <div class="indices" id="indices" hidden></div>
+    <p class="status" id="statusMsg" role="status"></p>
   </header>
 
   <section aria-labelledby="recsH">
     <div class="sec-head">
       <h2 id="recsH">Today's calls</h2>
+      <button type="button" class="back" id="backLatest" hidden>Back to the latest brief</button>
       <span class="eyebrow">Buys only on value or early-uptrend setups</span>
     </div>
     <div class="plan" id="plan" hidden></div>
@@ -210,7 +231,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     <div class="totals" id="totals" hidden></div>
     <div class="charts">
       <div class="chart-card">
-        <h3>Portfolio value</h3>
+        <h3>Portfolio value <span class="muted" style="font-weight:400;font-size:0.8rem">(includes new deposits)</span></h3>
         <div class="chart-wrap" id="valueChart"><p class="muted">The value line fills in as briefs arrive.</p></div>
         <p class="eyebrow" id="valueNote"></p>
       </div>
@@ -220,8 +241,8 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       </div>
     </div>
     <div class="table-box">
-      <table>
-        <thead><tr><th>Ticker</th><th>Shares</th><th>Avg cost</th><th>Price</th><th>Day</th><th>Value</th><th>Gain</th><th>Yield</th><th>Today's view</th><th></th></tr></thead>
+      <table class="stack">
+        <thead><tr><th>Ticker</th><th>Today's view</th><th>Value</th><th>Day</th><th>Gain</th><th>Price</th><th>Shares</th><th>Avg cost</th><th>Yield</th><th><span class="sr">Actions</span></th></tr></thead>
         <tbody id="holdRows"><tr><td colspan="10" class="note">No holdings yet. Add your first position below; the next brief will price it and give it a buy, hold or sell view.</td></tr></tbody>
       </table>
     </div>
@@ -229,7 +250,8 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       <label for="fTicker">Ticker<input id="fTicker" required maxlength="10" placeholder="MSFT"></label>
       <label for="fShares">Shares<input id="fShares" type="number" step="any" min="0" required placeholder="10"></label>
       <label for="fCost">Avg cost ($)<input id="fCost" type="number" step="any" min="0" placeholder="415.20"></label>
-      <button class="btn" id="fSave" type="submit">Save position</button>
+      <label class="chk" for="fAddMode"><input type="checkbox" id="fAddMode" checked>New purchase (adds to what I own)</label>
+      <button class="btn" id="fSave" type="submit">Save</button>
     </form>
     <p class="msg" id="formMsg"></p>
   </section>
@@ -246,6 +268,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
         <button type="button" id="fBought" aria-pressed="false">Ones I bought</button>
       </div>
     </div>
+    <ul class="lessons" id="lessons" hidden></ul>
     <div class="tv" id="tvBox" hidden>
       <div class="tv-head">
         <div class="tv-title" id="tvTitle"></div>
@@ -259,12 +282,12 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       <p class="muted" id="tvNote" style="margin:0;font-size:0.85rem"></p>
     </div>
     <div class="table-box">
-      <table>
-        <thead><tr><th>Called</th><th>Ticker</th><th>Strength</th><th>Setup</th><th>Call price</th><th>Now</th><th>Return</th><th>vs S&amp;P</th><th>Status</th><th>Bought?</th></tr></thead>
+      <table class="stack">
+        <thead><tr><th>Ticker</th><th>Strength</th><th>Return</th><th>vs S&amp;P</th><th>Called</th><th>Call price</th><th>Now</th><th>Setup</th><th>Status</th><th>Bought?</th></tr></thead>
         <tbody id="pickRows"><tr><td colspan="10" class="note">No buy calls yet. Each BUY or ADD from a brief lands here and is tracked daily.</td></tr></tbody>
       </table>
     </div>
-    <div class="table-box" style="margin-top:14px">
+    <div class="table-box" id="heatBox" style="margin-top:14px" hidden>
       <table class="heat-table">
         <thead><tr><th>Strength</th><th>Calls</th><th>Avg return</th><th>Avg vs S&amp;P</th><th>Beat S&amp;P</th></tr></thead>
         <tbody id="heatRows"></tbody>
@@ -304,7 +327,8 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   let pendingDelete = null;
   let backfill = null;
   let picks = [], priceDocs = [], pickFilter = "all", chartMode = "price", selectedPick = null;
-  let tvChart = null;
+  let tvChart = null, chartKey = "", chartSeries = [];
+  let seriesCache = null;
 
   const current = () => briefs.find(b => b.id === selectedId) || briefs[0] || null;
   const latest = () => briefs[0] || null;
@@ -344,6 +368,9 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
 
   function renderRecs() {
     const b = current(), box = $("recs");
+    const isLatest = !b || !latest() || b.id === latest().id;
+    $("recsH").textContent = isLatest ? "Today's calls" : "Calls from " + fmtDate(b.date);
+    $("backLatest").hidden = isLatest;
     const recs = (b && b.recommendations) || [];
     if (!recs.length) {
       box.replaceChildren(el("div", "empty", b ? "No new trades today. Holding steady is the call." : "Buy, add, trim and sell ideas appear here with the reasoning behind each one."));
@@ -368,6 +395,14 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       c.append(top, facts, el("p", null, r.rationale || ""));
       if (r.exitPlan) c.append(el("p", "exit", "Exit plan: " + r.exitPlan));
       if (r.watchFor) c.append(el("div", "watch", "Watch: " + r.watchFor));
+      if (r.debate && (r.debate.bull || r.debate.bear)) {
+        const d = el("details", "debate");
+        d.append(el("summary", null, "Bull vs bear" + (r.debate.rating ? " · final rating: " + r.debate.rating : "")));
+        if (r.debate.bull) d.append(el("p", null, "Bull: " + r.debate.bull));
+        if (r.debate.bear) d.append(el("p", null, "Bear: " + r.debate.bear));
+        if (r.debate.risk) d.append(el("p", "muted", "Risk check: " + r.debate.risk));
+        c.append(d);
+      }
       return c;
     }));
   }
@@ -401,7 +436,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     briefs.forEach(b => { if (b.portfolio && b.portfolio.value) pts.set(b.date, { date: b.date, value: b.portfolio.value, est: false }); });
     const data = [...pts.values()].sort((a, b) => a.date.localeCompare(b.date));
     const box = $("valueChart");
-    if (data.length < 2) return;
+    if (data.length < 2) { box.replaceChildren(el("p", "muted", "The value line fills in as briefs arrive.")); $("valueNote").textContent = ""; return; }
     const W = 560, H = 230, L = 52, R = 14, T = 12, B = 26;
     const t0 = Date.parse(data[0].date), t1 = Date.parse(data[data.length - 1].date);
     const vals = data.map(d => d.value);
@@ -420,9 +455,14 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     [data[0], data[Math.floor(data.length / 2)], data[data.length - 1]].forEach((d, i) => {
       const tx = svgEl("text", { x: x(d.date), y: H - 6, "text-anchor": i === 0 ? "start" : i === 2 ? "end" : "middle", class: "axis" }); tx.textContent = shortDate(d.date); svg.append(tx);
     });
-    const line = data.map((d, i) => (i ? "L" : "M") + x(d.date).toFixed(1) + " " + y(d.value).toFixed(1)).join(" ");
+    const path = (arr) => arr.map((d, i) => (i ? "L" : "M") + x(d.date).toFixed(1) + " " + y(d.value).toFixed(1)).join(" ");
+    const line = path(data);
     svg.append(svgEl("path", { d: line + ` L${x(data[data.length - 1].date)} ${H - B} L${x(data[0].date)} ${H - B} Z`, class: "area" }));
-    svg.append(svgEl("path", { d: line, class: "line" }));
+    const firstReal = data.findIndex(d => !d.est);
+    const estPart = firstReal === -1 ? data : data.slice(0, firstReal + 1);
+    const realPart = firstReal === -1 ? [] : data.slice(firstReal);
+    if (estPart.length > 1) svg.append(svgEl("path", { d: path(estPart), class: "line", "stroke-dasharray": "5 4" }));
+    if (realPart.length > 1) svg.append(svgEl("path", { d: path(realPart), class: "line" }));
     data.forEach((d, i) => { if (data.length <= 40 || i === data.length - 1) svg.append(svgEl("circle", { cx: x(d.date), cy: y(d.value), r: i === data.length - 1 ? 5 : 4, class: "pt" })); });
     const cross = svgEl("line", { y1: T, y2: H - B, class: "cross", visibility: "hidden" }); svg.append(cross);
     const tip = el("div", "tip"); tip.hidden = true;
@@ -439,14 +479,14 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     svg.append(hit);
     box.replaceChildren(svg, tip);
     const first = data[0], last = data[data.length - 1], chg = (last.value / first.value - 1) * 100;
-    $("valueNote").textContent = pct(chg) + " since " + shortDate(first.date) + (data.some(d => d.est) ? " · earlier points estimate today's holdings at past prices" : "");
+    $("valueNote").textContent = "Value change " + pct(chg) + " since " + shortDate(first.date) + ", including money added" + (data.some(d => d.est) ? " · dashed: today's holdings at past prices (estimate)" : "");
   }
 
   function renderMix() {
     const lb = latest(), quotes = (lb && lb.quotes) || {}, box = $("mixBars");
     const groups = {}; let total = 0;
     holdings.forEach(h => { const q = quotes[h.ticker]; if (!q || q.price == null) return; const v = q.price * h.shares; total += v; const g = q.bucket || "Other"; groups[g] = (groups[g] || 0) + v; });
-    if (!total) return;
+    if (!total) { box.replaceChildren(el("p", "muted", "Your mix appears once holdings are priced.")); return; }
     const rows = Object.entries(groups).sort((a, b) => b[1] - a[1]);
     const max = rows[0][1];
     box.replaceChildren(...rows.map(([g, v]) => {
@@ -466,7 +506,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       body.replaceChildren(); const tr = el("tr"); const td = el("td", "note", "No holdings yet. Add your first position below; the next brief will price it and give it a buy, hold or sell view.");
       td.colSpan = 10; tr.append(td); body.append(tr); $("totals").hidden = true; return;
     }
-    let value = 0, cost = 0, dayChg = 0, priced = 0;
+    let value = 0, cost = 0, costedValue = 0, dayChg = 0, priced = 0;
     body.replaceChildren(...holdings.map(h => {
       const q = quotes[h.ticker] || {};
       const price = q.price;
@@ -474,10 +514,10 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       const basis = h.avgCost != null ? h.avgCost * h.shares : null;
       const gain = val != null && basis != null ? val - basis : null;
       if (val != null) { value += val; priced++; if (q.changePct != null) dayChg += val - val / (1 + q.changePct / 100); }
-      if (val != null && basis != null) cost += basis;
+      if (val != null && basis != null) { cost += basis; costedValue += val; }
       const tr = el("tr");
       const tk = el("td"); tk.append(el("span", "tkr", h.ticker));
-      const view = el("td", "note");
+      const view = el("td", "note wide");
       if (q.verdict) { const v = String(q.verdict).toUpperCase(); view.append(el("span", "chip " + v, v), document.createTextNode(" " + (q.note || ""))); }
       else view.textContent = lb ? "Priced in the next brief." : "";
       if (q.tvRating) view.append(el("div", "eyebrow", "TradingView: " + q.tvRating + (q.rsi != null ? " · RSI " + q.rsi : "")));
@@ -487,25 +527,27 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
         const no = el("button", "btn ghost", "Keep"); no.type = "button"; no.onclick = () => { pendingDelete = null; renderHoldings(); };
         wrap.append(yes, no);
       } else {
-        const ed = el("button", "btn ghost", "Edit"); ed.type = "button"; ed.onclick = () => { $("fTicker").value = h.ticker; $("fShares").value = h.shares; $("fCost").value = h.avgCost ?? ""; $("fShares").focus(); };
+        const ed = el("button", "btn ghost", "Edit"); ed.type = "button"; ed.onclick = () => { $("fTicker").value = h.ticker; $("fShares").value = h.shares; $("fCost").value = h.avgCost ?? ""; $("fAddMode").checked = false; $("fShares").focus(); };
         const rm = el("button", "btn ghost", "Remove"); rm.type = "button"; rm.onclick = () => { pendingDelete = h.ticker; renderHoldings(); };
         wrap.append(ed, rm);
       }
       act.append(wrap);
-      tr.append(tk,
-        el("td", "num", Number(h.shares).toLocaleString("en-US", { maximumFractionDigits: 4 })),
-        el("td", "num", money(h.avgCost)),
-        el("td", "num", money(price)),
-        el("td", "num " + signCls(q.changePct), pct(q.changePct)),
-        el("td", "num", money(val)),
-        el("td", "num " + signCls(gain), gain == null ? "—" : money(gain) + " (" + pct(basis ? gain / basis * 100 : null) + ")"),
-        el("td", "num", q.dividendYield != null ? Number(q.dividendYield).toFixed(2) + "%" : "—"),
-        view, act);
+      const L = (td, label) => { td.dataset.label = label; return td; };
+      act.className = "wide";
+      tr.append(tk, view,
+        L(el("td", "num", money(val)), "Value"),
+        L(el("td", "num " + signCls(q.changePct), pct(q.changePct)), "Day"),
+        L(el("td", "num " + signCls(gain), gain == null ? "—" : money(gain) + " (" + pct(basis ? gain / basis * 100 : null) + ")"), "Gain"),
+        L(el("td", "num", money(price)), "Price"),
+        L(el("td", "num", Number(h.shares).toLocaleString("en-US", { maximumFractionDigits: 4 })), "Shares"),
+        L(el("td", "num", money(h.avgCost)), "Avg cost"),
+        L(el("td", "num", q.dividendYield != null ? Number(q.dividendYield).toFixed(2) + "%" : "—"), "Yield"),
+        act);
       return tr;
     }));
     const t = $("totals"); t.replaceChildren();
     if (priced) {
-      const gain = value - cost;
+      const gain = costedValue - cost;
       const tile = (label, v, cls) => { const d = el("div", "total"); d.append(el("span", "eyebrow", label), el("b", cls || "", v)); return d; };
       t.append(tile("Market value", money(value)),
         tile("Total gain", cost ? money(gain) + " · " + pct(gain / cost * 100) : "—", signCls(gain)),
@@ -518,7 +560,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   function renderNews() {
     const b = current(), ul = $("news");
     const items = (b && b.news) || [];
-    if (!items.length) return;
+    if (!items.length) { const li = el("li"); li.append(el("span", "dot"), el("div", "muted", "No headlines in this brief.")); ul.replaceChildren(li); return; }
     ul.replaceChildren(...items.map(n => {
       const li = el("li"); const d = el("div");
       const h = el("h3");
@@ -528,141 +570,189 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       (n.tickers || []).forEach(x => tags.append(el("span", "t", x)));
       if (n.source) tags.append(el("span", "muted", n.source));
       d.append(tags);
-      li.append(el("span", "dot " + (n.impact || "")), d);
+      const dot = el("span", "dot " + (n.impact || "")); dot.title = (n.impact || "neutral") + " impact";
+      d.prepend(el("span", "sr", (n.impact || "neutral") + " impact: "));
+      li.append(dot, d);
       return li;
     }));
   }
 
   // ---- Pick tracker ----
-  function candlesFor(ticker) {
-    const out = [];
+  // One pass per prices snapshot: ticker -> [{time, open, high, low, close, intraday}]
+  function buildSeries() {
+    const map = {}, byPrev = {};
+    priceDocs.forEach(d => { if (d.prevSession) byPrev[d.prevSession] = d; });
     priceDocs.forEach((doc, i) => {
-      const p = doc.prices && doc.prices[ticker];
-      if (!p || p.close == null) return;
-      const c = { time: doc.date, open: p.open ?? p.close, high: p.high ?? p.close, low: p.low ?? p.close, close: p.close };
-      const next = priceDocs.slice(i + 1).find(d => d.prices && d.prices[ticker]);
-      const fin = next && next.prices[ticker].prevClose;
-      if (fin != null) { c.close = fin; c.high = Math.max(c.high, fin); c.low = Math.min(c.low, fin); }
-      out.push(c);
+      // A close is final once the NEXT session's snapshot (whose prevSession is this day) supplies prevClose.
+      const next = byPrev[doc.date] || (priceDocs[i + 1] && !priceDocs[i + 1].prevSession ? priceDocs[i + 1] : null);
+      Object.entries(doc.prices || {}).forEach(([t, p]) => {
+        if (!p || p.close == null) return;
+        const c = { time: doc.date, open: p.open ?? p.close, high: p.high ?? p.close, low: p.low ?? p.close, close: p.close, intraday: !!doc.intraday };
+        const fin = next && next.prices && next.prices[t] && next.prices[t].prevClose;
+        if (fin != null) { c.close = fin; c.high = Math.max(c.high, fin); c.low = Math.min(c.low, fin); c.intraday = false; }
+        (map[t] = map[t] || []).push(c);
+      });
     });
-    return out;
+    return map;
   }
-  function daysBetween(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / 864e5); }
+  function series(t) { if (!seriesCache) seriesCache = buildSeries(); return seriesCache[t] || []; }
+  const plusDays = (iso, n) => new Date(Date.parse(iso + "T12:00:00Z") + n * 864e5).toISOString().slice(0, 10);
+  const closeOn = (arr, date) => { let v = null; for (const c of arr) { if (c.time <= date) v = c.close; else break; } return v; };
   function pickStats(pk) {
-    const cs = candlesFor(pk.ticker).filter(c => c.time >= pk.recSession);
-    const spy = candlesFor("SPY").filter(c => c.time >= pk.recSession);
-    const last = cs.length ? cs[cs.length - 1].close : null;
+    const cs = series(pk.ticker).filter(c => c.time >= pk.recSession);
+    const yearEnd = plusDays(pk.recDate, 365);
+    const closed = pk.status === "closed";
+    let end = closed ? (pk.closeDate || yearEnd) : (cs.length ? cs[cs.length - 1].time : pk.recSession);
+    if (end > yearEnd) end = yearEnd;
+    const last = closed && pk.closePrice != null ? pk.closePrice : closeOn(cs, end);
     const ret = last != null && pk.recPrice ? (last / pk.recPrice - 1) * 100 : null;
-    const spyLast = spy.length ? spy[spy.length - 1].close : null;
-    const spyRet = spyLast != null && pk.spyAtRec ? (spyLast / pk.spyAtRec - 1) * 100 : null;
-    const exitHit = pk.exitLevel != null && cs.some(c => c.time > pk.recSession && c.close < pk.exitLevel);
-    const age = daysBetween(pk.recDate, new Date().toISOString().slice(0, 10));
-    let status = pk.status === "closed" ? (pk.closeReason || "Closed") : exitHit ? "Exit level hit" : age >= 365 ? "1 year done" : "Open";
+    const spyEnd = closeOn(series("SPY"), end);
+    const spyRet = spyEnd != null && pk.spyAtRec ? (spyEnd / pk.spyAtRec - 1) * 100 : null;
+    const exitHit = pk.exitLevel != null && cs.some(c => c.time > pk.recSession && !c.intraday && c.close < pk.exitLevel);
+    const today = new Date().toISOString().slice(0, 10);
+    const status = closed ? (pk.closeReason || "Closed") : exitHit ? "Exit level hit" : today >= yearEnd ? "1 year done" : "Open";
     return { last, ret, spyRet, vs: ret != null && spyRet != null ? ret - spyRet : null, exitHit, status, days: cs.length };
   }
   function visiblePicks() { return picks.filter(p => pickFilter === "all" || p.bought); }
+  const pts = (v) => v == null ? "—" : (v > 0 ? "+" : "") + v.toFixed(2) + " pts";
+
+  function selectPick(id) {
+    selectedPick = id;
+    document.querySelectorAll("#pickRows tr.pick").forEach(r => r.toggleAttribute("aria-current", r.dataset.id === id));
+    renderPickChart();
+  }
 
   function renderTracker() {
     const rows = visiblePicks().map(p => ({ p, s: pickStats(p) }));
+    if (selectedPick && !rows.some(r => r.p.id === selectedPick)) selectedPick = null;
+    if (!selectedPick && rows.length) selectedPick = rows[0].p.id;
     const body = $("pickRows");
     if (!rows.length) {
-      const tr = el("tr"); const td = el("td", "note", pickFilter === "bought" ? "Nothing marked as bought yet. Tick \"I bought this\" on any call you act on." : "No buy calls yet. Each BUY or ADD from a brief lands here and is tracked daily.");
+      const tr = el("tr"); const td = el("td", "note", pickFilter === "bought" ? "Nothing marked as bought yet. Tick the box on any call you act on." : "No buy calls yet. Each BUY or ADD from a brief lands here and is tracked daily.");
       td.colSpan = 10; tr.append(td); body.replaceChildren(tr);
     } else {
+      const focusedId = document.activeElement && document.activeElement.closest && document.activeElement.closest("tr.pick") ? document.activeElement.closest("tr.pick").dataset.id : null;
       body.replaceChildren(...rows.map(({ p, s }) => {
-        const tr = el("tr", "pick"); tr.tabIndex = 0; tr.setAttribute("aria-selected", String(selectedPick === p.id));
-        const pick = () => { selectedPick = p.id; renderTracker(); };
-        tr.addEventListener("click", (e) => { if (!e.target.closest("label")) pick(); });
-        tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+        const tr = el("tr", "pick"); tr.tabIndex = 0; tr.dataset.id = p.id;
+        if (selectedPick === p.id) tr.setAttribute("aria-current", "true");
+        tr.setAttribute("aria-label", p.ticker + " call from " + shortDate(p.recDate) + ", show chart");
+        tr.addEventListener("click", (e) => { if (!e.target.closest("label")) selectPick(p.id); });
+        tr.addEventListener("keydown", (e) => { if (e.target !== tr) return; if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectPick(p.id); } });
+        const L = (td, label) => { td.dataset.label = label; return td; };
         const tk = el("td"); tk.append(el("span", "tkr", p.ticker));
         const ht = el("td"); ht.append(heat(p.heat));
-        const st = el("td"); st.append(el("span", "flag" + (s.status === "Open" ? " ok" : ""), s.status));
-        const bt = el("td"); const lab = el("label", "bought"); const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!p.bought; cb.id = "bought-" + p.id;
-        cb.addEventListener("change", () => setBought(p, cb.checked, cb)); lab.append(cb, document.createTextNode(cb.checked ? "Bought" : "Not bought")); bt.append(lab);
-        tr.append(el("td", "num", shortDate(p.recDate)), tk, ht, el("td", null, p.setup || ""), el("td", "num", money(p.recPrice)), el("td", "num", money(s.last)),
-          el("td", "num " + signCls(s.ret), pct(s.ret)), el("td", "num " + signCls(s.vs), s.vs == null ? "—" : (s.vs > 0 ? "+" : "") + s.vs.toFixed(2) + " pts"), st, bt);
+        const st = L(el("td"), "Status"); st.append(el("span", "flag" + (s.status === "Open" ? " ok" : ""), s.status));
+        const bt = L(el("td"), "Bought?"); const lab = el("label", "bought"); const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!p.bought; cb.id = "bought-" + p.id;
+        const txt = document.createTextNode(cb.checked ? "Bought" : "Not bought");
+        cb.addEventListener("change", () => { txt.textContent = cb.checked ? "Bought" : "Not bought"; setBought(p, cb.checked, cb, txt); });
+        lab.append(cb, txt); bt.append(lab);
+        tr.append(tk, ht,
+          L(el("td", "num " + signCls(s.ret), pct(s.ret)), "Return"),
+          L(el("td", "num " + signCls(s.vs), pts(s.vs)), "vs S&P"),
+          L(el("td", "num", shortDate(p.recDate)), "Called"),
+          L(el("td", "num", money(p.recPrice)), "Call price"),
+          L(el("td", "num", money(s.last)), "Now"),
+          L(el("td", null, p.setup || ""), "Setup"), st, bt);
         return tr;
       }));
+      if (focusedId) { const r = body.querySelector(`tr.pick[data-id="${CSS.escape(focusedId)}"]`); if (r) r.focus(); }
     }
-    // totals
     const scored = rows.filter(r => r.s.ret != null);
     const avg = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
     const t = $("trackTotals"); t.replaceChildren();
     const tile = (label, v, cls) => { const d = el("div", "total"); d.append(el("span", "eyebrow", label), el("b", cls || "", v)); return d; };
-    const aRet = avg(scored.map(r => r.s.ret)), aVs = avg(scored.filter(r => r.s.vs != null).map(r => r.s.vs));
-    const beat = scored.filter(r => r.s.vs != null);
+    const withVs = scored.filter(r => r.s.vs != null);
+    const aRet = avg(scored.map(r => r.s.ret)), aVs = avg(withVs.map(r => r.s.vs));
     t.append(tile("Calls tracked", String(rows.length)), tile("Avg return", pct(aRet), signCls(aRet)),
-      tile("Avg vs S&P 500", aVs == null ? "—" : (aVs > 0 ? "+" : "") + aVs.toFixed(2) + " pts", signCls(aVs)),
-      tile("Beat the S&P", beat.length ? Math.round(beat.filter(r => r.s.vs > 0).length / beat.length * 100) + "%" : "—"));
-    // by heat
+      tile("Avg vs S&P 500", pts(aVs), signCls(aVs)),
+      tile("Beat the S&P", withVs.length ? Math.round(withVs.filter(r => r.s.vs > 0).length / withVs.length * 100) + "%" : "—"));
     const hb = $("heatRows"); hb.replaceChildren();
     for (let h = 5; h >= 1; h--) {
-      const g = scored.filter(r => Math.round(r.p.heat) === h); const tr = el("tr");
-      const c0 = el("td"); c0.append(heat(h)); const gv = g.filter(r => r.s.vs != null);
+      const g = scored.filter(r => Math.round(r.p.heat) === h); if (!g.length) continue;
+      const tr = el("tr"); const c0 = el("td"); c0.append(heat(h)); const gv = g.filter(r => r.s.vs != null);
       const gr = avg(g.map(r => r.s.ret)), gvs = avg(gv.map(r => r.s.vs));
-      tr.append(c0, el("td", "num", String(g.length)), el("td", "num " + signCls(gr), pct(gr)), el("td", "num " + signCls(gvs), gvs == null ? "—" : (gvs > 0 ? "+" : "") + gvs.toFixed(2) + " pts"),
+      tr.append(c0, el("td", "num", String(g.length)), el("td", "num " + signCls(gr), pct(gr)), el("td", "num " + signCls(gvs), pts(gvs)),
         el("td", "num", gv.length ? Math.round(gv.filter(r => r.s.vs > 0).length / gv.length * 100) + "%" : "—"));
       hb.append(tr);
     }
-    if (!selectedPick && rows.length) selectedPick = rows[0].p.id;
+    $("heatBox").hidden = !hb.children.length;
+    const lb = latest(), ls = $("lessons"), lessons = (lb && lb.lessons) || [];
+    ls.replaceChildren(...lessons.map(x => el("li", null, x))); ls.hidden = !lessons.length;
     renderPickChart();
   }
 
-  async function setBought(p, val, cb) {
-    try { await db.doc("picks/" + p.id).update({ bought: val, boughtDate: val ? new Date().toISOString().slice(0, 10) : null }); $("trackMsg").textContent = ""; }
-    catch (e) { cb.checked = !val; $("trackMsg").textContent = "Couldn't save that. Try again."; $("trackMsg").className = "msg err"; }
+  function trackMsg(text) { const m = $("trackMsg"); m.textContent = text; m.className = "msg" + (text ? " err" : ""); }
+  async function setBought(p, val, cb, txt) {
+    try { await db.doc("picks/" + p.id).update({ bought: val, boughtDate: val ? new Date().toISOString().slice(0, 10) : null }); trackMsg(""); }
+    catch (e) { cb.checked = !val; txt.textContent = cb.checked ? "Bought" : "Not bought"; trackMsg("Couldn't save that. Try again."); }
   }
 
   function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function themeKey() { return cssVar("--bg") + "|" + cssVar("--accent"); }
+  function chartData(pk) {
+    const cs = series(pk.ticker).map(({ intraday, ...c }) => c);
+    if (chartMode === "price") return { candles: cs };
+    const mine = cs.filter(c => c.time >= pk.recSession).map(c => ({ time: c.time, value: (c.close / pk.recPrice - 1) * 100 }));
+    const spy = series("SPY").filter(c => c.time >= pk.recSession).map(c => ({ time: c.time, value: (c.close / pk.spyAtRec - 1) * 100 }));
+    return { mine, spy };
+  }
   function renderPickChart() {
     const box = $("tvBox"), pk = picks.find(p => p.id === selectedPick);
-    if (!pk) { box.hidden = true; return; }
+    if (!pk) { box.hidden = true; if (tvChart) { tvChart.remove(); tvChart = null; chartKey = ""; } return; }
     box.hidden = false;
     const s = pickStats(pk);
     const title = $("tvTitle"); title.replaceChildren();
     title.append(el("span", "tkr", pk.ticker), el("span", "muted", pk.name || ""), heat(pk.heat), el("span", "setup", pk.setup || ""));
-    const big = el("span", "tv-big " + signCls(s.ret), s.last != null ? money(s.last) + "  " + pct(s.ret) : "—"); title.append(big);
+    title.append(el("span", "tv-big " + signCls(s.ret), s.last != null ? money(s.last) + "  " + pct(s.ret) : "—"));
     const legend = $("tvLegend"); legend.replaceChildren();
     const li = (cls, text) => { const s2 = el("span"); s2.append(el("i", cls)); s2.append(document.createTextNode(text)); return s2; };
-    legend.append(li("", chartMode === "price" ? "Call price " + money(pk.recPrice) + " on " + shortDate(pk.recDate) : pk.ticker + " % since call"));
-    if (chartMode === "vs") legend.append(li("spy", "S&P 500 (SPY) % since call"));
+    const callTxt = "Called " + shortDate(pk.recDate) + " at " + money(pk.recPrice) + (pk.recSession && pk.recSession !== pk.recDate ? " (" + shortDate(pk.recSession) + " close)" : "");
+    legend.append(li("", chartMode === "price" ? callTxt : pk.ticker + " % since the call"));
+    if (chartMode === "vs") legend.append(li("spy", "S&P 500 (SPY) % over the same days · " + pts(s.vs)));
     if (chartMode === "price" && pk.exitLevel != null) legend.append(li("dash", "Exit level " + money(pk.exitLevel)));
-    $("tvNote").textContent = (pk.thesis ? pk.thesis + " " : "") + (s.days < 5 ? "The chart adds one daily candle per brief, so it fills in over the coming days." : "");
+    $("tvNote").textContent = (pk.thesis ? pk.thesis + " " : "") + (s.days < 5 ? "One candle is added per trading day, so the chart fills in over the coming days." : "");
     const host = $("tvChart");
     if (!window.LightweightCharts) { host.replaceChildren(el("p", "muted", "The chart library didn't load. Reload the page to try again.")); return; }
-    if (tvChart) { tvChart.remove(); tvChart = null; }
-    host.replaceChildren();
     const LC = window.LightweightCharts;
+    const key = pk.id + "|" + chartMode + "|" + themeKey();
+    const data = chartData(pk);
+    if (tvChart && key === chartKey) {
+      if (chartMode === "price") chartSeries[0].setData(data.candles); else { chartSeries[0].setData(data.mine); chartSeries[1].setData(data.spy); }
+      return;
+    }
+    if (tvChart) { tvChart.remove(); tvChart = null; }
+    host.replaceChildren(); chartKey = key; chartSeries = [];
     tvChart = LC.createChart(host, {
       autoSize: true,
-      localization: { locale: "en-US", priceFormatter: (v) => chartMode === "vs" ? v.toFixed(1) + "%" : "$" + v.toFixed(2) },
+      localization: { locale: "en-US", priceFormatter: (v) => chartMode === "vs" ? (v > 0 ? "+" : "") + v.toFixed(1) + "%" : "$" + v.toFixed(2) },
       layout: { background: { type: "solid", color: "transparent" }, textColor: cssVar("--muted"), fontFamily: "IBM Plex Mono, ui-monospace, monospace", fontSize: 11 },
       grid: { vertLines: { color: cssVar("--line") }, horzLines: { color: cssVar("--line") } },
-      rightPriceScale: { borderColor: cssVar("--line"), mode: chartMode === "vs" ? LC.PriceScaleMode.Percentage : LC.PriceScaleMode.Normal },
+      rightPriceScale: { borderColor: cssVar("--line") },
       timeScale: { borderColor: cssVar("--line"), rightOffset: 4 },
       crosshair: { mode: LC.CrosshairMode.Normal },
     });
-    const cs = candlesFor(pk.ticker);
     const up = cssVar("--up"), down = cssVar("--down"), accent = cssVar("--accent");
     if (chartMode === "price") {
       const ser = tvChart.addCandlestickSeries({ upColor: up, downColor: down, borderUpColor: up, borderDownColor: down, wickUpColor: up, wickDownColor: down });
-      ser.setData(cs);
-      ser.createPriceLine({ price: pk.recPrice, color: accent, lineWidth: 2, lineStyle: LC.LineStyle.Solid, axisLabelVisible: true, title: "Call" });
+      ser.setData(data.candles);
+      if (pk.recPrice) ser.createPriceLine({ price: pk.recPrice, color: accent, lineWidth: 2, lineStyle: LC.LineStyle.Solid, axisLabelVisible: true, title: "Call" });
       if (pk.exitLevel != null) ser.createPriceLine({ price: pk.exitLevel, color: down, lineWidth: 1, lineStyle: LC.LineStyle.Dashed, axisLabelVisible: true, title: "Exit" });
-      if (cs.some(c => c.time === pk.recSession)) ser.setMarkers([{ time: pk.recSession, position: "belowBar", color: accent, shape: "arrowUp", text: pk.action + " " + "\u{1F525}".repeat(pk.heat || 0) }]);
+      if (data.candles.some(c => c.time === pk.recSession)) ser.setMarkers([{ time: pk.recSession, position: "belowBar", color: accent, shape: "arrowUp", text: (pk.action || "BUY") + " " + "\u{1F525}".repeat(pk.heat || 0) }]);
+      chartSeries = [ser];
     } else {
-      const since = cs.filter(c => c.time >= pk.recSession).map(c => ({ time: c.time, value: c.close }));
       const a = tvChart.addLineSeries({ color: accent, lineWidth: 2, priceLineVisible: false, title: pk.ticker });
-      a.setData(since);
-      const spy = candlesFor("SPY").filter(c => c.time >= pk.recSession).map(c => ({ time: c.time, value: c.close }));
       const b = tvChart.addLineSeries({ color: cssVar("--muted"), lineWidth: 2, priceLineVisible: false, title: "S&P 500" });
-      b.setData(spy);
+      a.setData(data.mine); b.setData(data.spy);
+      a.createPriceLine({ price: 0, color: cssVar("--line"), lineWidth: 1, lineStyle: LC.LineStyle.Dotted, axisLabelVisible: false });
+      chartSeries = [a, b];
     }
-    tvChart.timeScale().fitContent();
+    const ts = tvChart.timeScale(); ts.fitContent();
+    if (chartMode === "price") requestAnimationFrame(() => { const r = ts.getVisibleLogicalRange(); if (r) ts.setVisibleLogicalRange({ from: r.from - 2, to: r.to }); });
   }
 
   function renderAll() { renderHeader(); renderPicker(); renderPlan(); renderRecs(); renderHoldings(); renderNews(); renderValueChart(); renderMix(); renderTracker(); }
 
+  function status(text) { $("statusMsg").textContent = text; }
   function setMsg(text, err) { const m = $("formMsg"); m.textContent = text; m.className = "msg" + (err ? " err" : ""); }
 
   async function removeHolding(ticker) {
@@ -672,6 +762,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   }
 
   $("briefPick").addEventListener("change", (e) => { selectedId = e.target.value; renderHeader(); renderPlan(); renderRecs(); renderNews(); });
+  $("backLatest").addEventListener("click", () => { selectedId = null; renderHeader(); renderPicker(); renderPlan(); renderRecs(); renderNews(); $("recsH").focus && $("recsH").focus(); });
 
   $("addForm").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -684,8 +775,15 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     if (!(shares > 0)) { setMsg("Enter how many shares you own (more than 0).", true); return; }
     $("fSave").disabled = true;
     try {
-      await db.collection("holdings").doc(ticker).set({ ticker, shares, avgCost, updatedAt: new Date().toISOString() });
-      setMsg(ticker + " saved."); $("addForm").reset();
+      const existing = holdings.find(h => h.ticker === ticker);
+      let newShares = shares, newCost = avgCost, msg = ticker + " saved.";
+      if ($("fAddMode").checked && existing) {
+        newShares = existing.shares + shares;
+        newCost = existing.avgCost != null && avgCost != null ? (existing.avgCost * existing.shares + avgCost * shares) / newShares : (existing.avgCost ?? avgCost);
+        msg = "Added " + shares + " " + ticker + ". You now own " + Number(newShares.toFixed(4)) + (newCost != null ? " at " + money(newCost) + " average." : ".");
+      }
+      await db.collection("holdings").doc(ticker).set({ ticker, shares: newShares, avgCost: newCost != null ? Math.round(newCost * 10000) / 10000 : null, updatedAt: new Date().toISOString() });
+      setMsg(msg); $("addForm").reset(); $("fAddMode").checked = true;
     } catch (err) {
       setMsg(err && err.code === "invalid_argument" ? "You don't have permission to change holdings on this page." : "Could not save " + ticker + ". Try again.", true);
     } finally { $("fSave").disabled = false; }
@@ -701,25 +799,25 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
 
   (async () => {
     db = window.claude && window.claude.use ? await window.claude.use("db") : null;
-    if (!db) { $("fSave").disabled = true; setMsg("Open this page in claude.ai while signed in to see your brief and holdings.", true); return; }
+    if (!db) { $("fSave").disabled = true; status("Open this page in claude.ai while signed in to see your brief and holdings."); return; }
     db.collection("briefs").orderBy("date", "desc").limit(260).onSnapshot((snap) => {
       briefs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if (selectedId && !briefs.some(b => b.id === selectedId)) selectedId = null;
       renderAll();
-    }, () => setMsg("Lost the connection to your briefs. Reload the page.", true));
+    }, () => status("Lost the connection to your briefs. Reload the page."));
     db.collection("holdings").onSnapshot((snap) => {
       holdings = snap.docs.map(d => d.data()).filter(h => h && h.ticker).sort((a, b) => a.ticker.localeCompare(b.ticker));
       renderHoldings(); renderMix();
-    }, () => setMsg("Lost the connection to your holdings. Reload the page.", true));
+    }, () => status("Lost the connection to your holdings. Reload the page."));
     db.collection("picks").orderBy("recDate", "desc").limit(500).onSnapshot((snap) => {
       picks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderTracker();
-    }, () => setMsg("Lost the connection to the pick tracker. Reload the page.", true));
+    }, () => trackMsg("Lost the connection to the pick tracker. Reload the page."));
     db.collection("prices").orderBy("date", "desc").limit(400).onSnapshot((snap) => {
-      priceDocs = snap.docs.map(d => d.data()).reverse();
+      priceDocs = snap.docs.map(d => d.data()).reverse(); seriesCache = null;
       renderTracker();
-    }, () => {});
-    db.doc("history/backfill").onSnapshot((snap) => { backfill = snap.exists ? snap.data() : null; renderValueChart(); }, () => {});
+    }, () => trackMsg("Couldn't load price history. Reload the page."));
+    db.doc("history/backfill").onSnapshot((snap) => { backfill = snap.exists ? snap.data() : null; renderValueChart(); }, () => status("Couldn't load the value history. Reload the page."));
   })();
 })();
 </script>
