@@ -115,6 +115,30 @@ header { display: grid; gap: 14px; }
 .bar-track { height: 12px; }
 .bar-fill { height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
 .bar-row .val { font-family: var(--f-data); font-variant-numeric: tabular-nums; color: var(--muted); text-align: right; }
+/* Pick tracker */
+.track-top { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { background: transparent; color: var(--muted); border: 0; padding: 6px 12px; cursor: pointer; font-size: 0.82rem; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.heat-table { font-size: 0.84rem; }
+.heat-table td, .heat-table th { padding: 6px 10px; }
+.tv { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; margin-bottom: 14px; min-width: 0; }
+.tv-head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; justify-content: space-between; }
+.tv-title { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+.tv-title .tkr { font-size: 1.25rem; }
+.tv-big { font-family: var(--f-data); font-size: 1.25rem; font-weight: 500; }
+.tv-chart { height: 340px; min-width: 0; }
+@media (max-width: 600px) { .tv-chart { height: 260px; } }
+.tv-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.8rem; color: var(--muted); }
+.tv-legend i { display: inline-block; width: 14px; height: 0; border-top: 2px solid var(--accent); vertical-align: middle; margin-right: 6px; }
+.tv-legend i.spy { border-top-color: var(--muted); }
+.tv-legend i.dash { border-top-style: dashed; border-top-color: var(--down); }
+tr.pick { cursor: pointer; }
+tr.pick:hover td { background: var(--flat-soft); }
+tr.pick[aria-selected="true"] td { background: var(--accent-soft); }
+.flag { font-family: var(--f-data); font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: var(--down-soft); color: var(--down); white-space: nowrap; }
+.flag.ok { background: var(--flat-soft); color: var(--muted); }
+label.bought { display: inline-flex; gap: 6px; align-items: center; font-size: 0.82rem; cursor: pointer; }
 .rec .watch { font-size: 0.85rem; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 8px; }
 
 /* Holdings */
@@ -210,6 +234,45 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     <p class="msg" id="formMsg"></p>
   </section>
 
+  <section aria-labelledby="trackH">
+    <div class="sec-head">
+      <h2 id="trackH">Pick tracker</h2>
+      <span class="eyebrow">Every buy call, tracked from the day it was made</span>
+    </div>
+    <div class="track-top">
+      <div class="totals" id="trackTotals"></div>
+      <div class="seg" role="group" aria-label="Which picks to count">
+        <button type="button" id="fAll" aria-pressed="true">All calls</button>
+        <button type="button" id="fBought" aria-pressed="false">Ones I bought</button>
+      </div>
+    </div>
+    <div class="tv" id="tvBox" hidden>
+      <div class="tv-head">
+        <div class="tv-title" id="tvTitle"></div>
+        <div class="seg" role="group" aria-label="Chart mode">
+          <button type="button" id="mPrice" aria-pressed="true">Price</button>
+          <button type="button" id="mVs" aria-pressed="false">% vs S&amp;P 500</button>
+        </div>
+      </div>
+      <div class="tv-chart" id="tvChart"></div>
+      <div class="tv-legend" id="tvLegend"></div>
+      <p class="muted" id="tvNote" style="margin:0;font-size:0.85rem"></p>
+    </div>
+    <div class="table-box">
+      <table>
+        <thead><tr><th>Called</th><th>Ticker</th><th>Strength</th><th>Setup</th><th>Call price</th><th>Now</th><th>Return</th><th>vs S&amp;P</th><th>Status</th><th>Bought?</th></tr></thead>
+        <tbody id="pickRows"><tr><td colspan="10" class="note">No buy calls yet. Each BUY or ADD from a brief lands here and is tracked daily.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="table-box" style="margin-top:14px">
+      <table class="heat-table">
+        <thead><tr><th>Strength</th><th>Calls</th><th>Avg return</th><th>Avg vs S&amp;P</th><th>Beat S&amp;P</th></tr></thead>
+        <tbody id="heatRows"></tbody>
+      </table>
+    </div>
+    <p class="msg" id="trackMsg"></p>
+  </section>
+
   <section aria-labelledby="newsH">
     <div class="sec-head"><h2 id="newsH">Market news</h2></div>
     <ul class="news" id="news"><li><span class="dot"></span><div class="muted">Headlines that move the market or your positions will be listed here.</div></li></ul>
@@ -218,6 +281,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   <footer id="disclaimer">Research summaries written by Claude from public news and quotes, which can be delayed. Not financial advice; check prices with your broker before you trade.</footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -239,6 +303,8 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   let db = null;
   let pendingDelete = null;
   let backfill = null;
+  let picks = [], priceDocs = [], pickFilter = "all", chartMode = "price", selectedPick = null;
+  let tvChart = null;
 
   const current = () => briefs.find(b => b.id === selectedId) || briefs[0] || null;
   const latest = () => briefs[0] || null;
@@ -467,7 +533,135 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     }));
   }
 
-  function renderAll() { renderHeader(); renderPicker(); renderPlan(); renderRecs(); renderHoldings(); renderNews(); renderValueChart(); renderMix(); }
+  // ---- Pick tracker ----
+  function candlesFor(ticker) {
+    const out = [];
+    priceDocs.forEach((doc, i) => {
+      const p = doc.prices && doc.prices[ticker];
+      if (!p || p.close == null) return;
+      const c = { time: doc.date, open: p.open ?? p.close, high: p.high ?? p.close, low: p.low ?? p.close, close: p.close };
+      const next = priceDocs.slice(i + 1).find(d => d.prices && d.prices[ticker]);
+      const fin = next && next.prices[ticker].prevClose;
+      if (fin != null) { c.close = fin; c.high = Math.max(c.high, fin); c.low = Math.min(c.low, fin); }
+      out.push(c);
+    });
+    return out;
+  }
+  function daysBetween(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / 864e5); }
+  function pickStats(pk) {
+    const cs = candlesFor(pk.ticker).filter(c => c.time >= pk.recSession);
+    const spy = candlesFor("SPY").filter(c => c.time >= pk.recSession);
+    const last = cs.length ? cs[cs.length - 1].close : null;
+    const ret = last != null && pk.recPrice ? (last / pk.recPrice - 1) * 100 : null;
+    const spyLast = spy.length ? spy[spy.length - 1].close : null;
+    const spyRet = spyLast != null && pk.spyAtRec ? (spyLast / pk.spyAtRec - 1) * 100 : null;
+    const exitHit = pk.exitLevel != null && cs.some(c => c.time > pk.recSession && c.close < pk.exitLevel);
+    const age = daysBetween(pk.recDate, new Date().toISOString().slice(0, 10));
+    let status = pk.status === "closed" ? (pk.closeReason || "Closed") : exitHit ? "Exit level hit" : age >= 365 ? "1 year done" : "Open";
+    return { last, ret, spyRet, vs: ret != null && spyRet != null ? ret - spyRet : null, exitHit, status, days: cs.length };
+  }
+  function visiblePicks() { return picks.filter(p => pickFilter === "all" || p.bought); }
+
+  function renderTracker() {
+    const rows = visiblePicks().map(p => ({ p, s: pickStats(p) }));
+    const body = $("pickRows");
+    if (!rows.length) {
+      const tr = el("tr"); const td = el("td", "note", pickFilter === "bought" ? "Nothing marked as bought yet. Tick \"I bought this\" on any call you act on." : "No buy calls yet. Each BUY or ADD from a brief lands here and is tracked daily.");
+      td.colSpan = 10; tr.append(td); body.replaceChildren(tr);
+    } else {
+      body.replaceChildren(...rows.map(({ p, s }) => {
+        const tr = el("tr", "pick"); tr.tabIndex = 0; tr.setAttribute("aria-selected", String(selectedPick === p.id));
+        const pick = () => { selectedPick = p.id; renderTracker(); };
+        tr.addEventListener("click", (e) => { if (!e.target.closest("label")) pick(); });
+        tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+        const tk = el("td"); tk.append(el("span", "tkr", p.ticker));
+        const ht = el("td"); ht.append(heat(p.heat));
+        const st = el("td"); st.append(el("span", "flag" + (s.status === "Open" ? " ok" : ""), s.status));
+        const bt = el("td"); const lab = el("label", "bought"); const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!p.bought; cb.id = "bought-" + p.id;
+        cb.addEventListener("change", () => setBought(p, cb.checked, cb)); lab.append(cb, document.createTextNode(cb.checked ? "Bought" : "Not bought")); bt.append(lab);
+        tr.append(el("td", "num", shortDate(p.recDate)), tk, ht, el("td", null, p.setup || ""), el("td", "num", money(p.recPrice)), el("td", "num", money(s.last)),
+          el("td", "num " + signCls(s.ret), pct(s.ret)), el("td", "num " + signCls(s.vs), s.vs == null ? "—" : (s.vs > 0 ? "+" : "") + s.vs.toFixed(2) + " pts"), st, bt);
+        return tr;
+      }));
+    }
+    // totals
+    const scored = rows.filter(r => r.s.ret != null);
+    const avg = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+    const t = $("trackTotals"); t.replaceChildren();
+    const tile = (label, v, cls) => { const d = el("div", "total"); d.append(el("span", "eyebrow", label), el("b", cls || "", v)); return d; };
+    const aRet = avg(scored.map(r => r.s.ret)), aVs = avg(scored.filter(r => r.s.vs != null).map(r => r.s.vs));
+    const beat = scored.filter(r => r.s.vs != null);
+    t.append(tile("Calls tracked", String(rows.length)), tile("Avg return", pct(aRet), signCls(aRet)),
+      tile("Avg vs S&P 500", aVs == null ? "—" : (aVs > 0 ? "+" : "") + aVs.toFixed(2) + " pts", signCls(aVs)),
+      tile("Beat the S&P", beat.length ? Math.round(beat.filter(r => r.s.vs > 0).length / beat.length * 100) + "%" : "—"));
+    // by heat
+    const hb = $("heatRows"); hb.replaceChildren();
+    for (let h = 5; h >= 1; h--) {
+      const g = scored.filter(r => Math.round(r.p.heat) === h); const tr = el("tr");
+      const c0 = el("td"); c0.append(heat(h)); const gv = g.filter(r => r.s.vs != null);
+      const gr = avg(g.map(r => r.s.ret)), gvs = avg(gv.map(r => r.s.vs));
+      tr.append(c0, el("td", "num", String(g.length)), el("td", "num " + signCls(gr), pct(gr)), el("td", "num " + signCls(gvs), gvs == null ? "—" : (gvs > 0 ? "+" : "") + gvs.toFixed(2) + " pts"),
+        el("td", "num", gv.length ? Math.round(gv.filter(r => r.s.vs > 0).length / gv.length * 100) + "%" : "—"));
+      hb.append(tr);
+    }
+    if (!selectedPick && rows.length) selectedPick = rows[0].p.id;
+    renderPickChart();
+  }
+
+  async function setBought(p, val, cb) {
+    try { await db.doc("picks/" + p.id).update({ bought: val, boughtDate: val ? new Date().toISOString().slice(0, 10) : null }); $("trackMsg").textContent = ""; }
+    catch (e) { cb.checked = !val; $("trackMsg").textContent = "Couldn't save that. Try again."; $("trackMsg").className = "msg err"; }
+  }
+
+  function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function renderPickChart() {
+    const box = $("tvBox"), pk = picks.find(p => p.id === selectedPick);
+    if (!pk) { box.hidden = true; return; }
+    box.hidden = false;
+    const s = pickStats(pk);
+    const title = $("tvTitle"); title.replaceChildren();
+    title.append(el("span", "tkr", pk.ticker), el("span", "muted", pk.name || ""), heat(pk.heat), el("span", "setup", pk.setup || ""));
+    const big = el("span", "tv-big " + signCls(s.ret), s.last != null ? money(s.last) + "  " + pct(s.ret) : "—"); title.append(big);
+    const legend = $("tvLegend"); legend.replaceChildren();
+    const li = (cls, text) => { const s2 = el("span"); s2.append(el("i", cls)); s2.append(document.createTextNode(text)); return s2; };
+    legend.append(li("", chartMode === "price" ? "Call price " + money(pk.recPrice) + " on " + shortDate(pk.recDate) : pk.ticker + " % since call"));
+    if (chartMode === "vs") legend.append(li("spy", "S&P 500 (SPY) % since call"));
+    if (chartMode === "price" && pk.exitLevel != null) legend.append(li("dash", "Exit level " + money(pk.exitLevel)));
+    $("tvNote").textContent = (pk.thesis ? pk.thesis + " " : "") + (s.days < 5 ? "The chart adds one daily candle per brief, so it fills in over the coming days." : "");
+    const host = $("tvChart");
+    if (!window.LightweightCharts) { host.replaceChildren(el("p", "muted", "The chart library didn't load. Reload the page to try again.")); return; }
+    if (tvChart) { tvChart.remove(); tvChart = null; }
+    host.replaceChildren();
+    const LC = window.LightweightCharts;
+    tvChart = LC.createChart(host, {
+      autoSize: true,
+      localization: { locale: "en-US", priceFormatter: (v) => chartMode === "vs" ? v.toFixed(1) + "%" : "$" + v.toFixed(2) },
+      layout: { background: { type: "solid", color: "transparent" }, textColor: cssVar("--muted"), fontFamily: "IBM Plex Mono, ui-monospace, monospace", fontSize: 11 },
+      grid: { vertLines: { color: cssVar("--line") }, horzLines: { color: cssVar("--line") } },
+      rightPriceScale: { borderColor: cssVar("--line"), mode: chartMode === "vs" ? LC.PriceScaleMode.Percentage : LC.PriceScaleMode.Normal },
+      timeScale: { borderColor: cssVar("--line"), rightOffset: 4 },
+      crosshair: { mode: LC.CrosshairMode.Normal },
+    });
+    const cs = candlesFor(pk.ticker);
+    const up = cssVar("--up"), down = cssVar("--down"), accent = cssVar("--accent");
+    if (chartMode === "price") {
+      const ser = tvChart.addCandlestickSeries({ upColor: up, downColor: down, borderUpColor: up, borderDownColor: down, wickUpColor: up, wickDownColor: down });
+      ser.setData(cs);
+      ser.createPriceLine({ price: pk.recPrice, color: accent, lineWidth: 2, lineStyle: LC.LineStyle.Solid, axisLabelVisible: true, title: "Call" });
+      if (pk.exitLevel != null) ser.createPriceLine({ price: pk.exitLevel, color: down, lineWidth: 1, lineStyle: LC.LineStyle.Dashed, axisLabelVisible: true, title: "Exit" });
+      if (cs.some(c => c.time === pk.recSession)) ser.setMarkers([{ time: pk.recSession, position: "belowBar", color: accent, shape: "arrowUp", text: pk.action + " " + "\u{1F525}".repeat(pk.heat || 0) }]);
+    } else {
+      const since = cs.filter(c => c.time >= pk.recSession).map(c => ({ time: c.time, value: c.close }));
+      const a = tvChart.addLineSeries({ color: accent, lineWidth: 2, priceLineVisible: false, title: pk.ticker });
+      a.setData(since);
+      const spy = candlesFor("SPY").filter(c => c.time >= pk.recSession).map(c => ({ time: c.time, value: c.close }));
+      const b = tvChart.addLineSeries({ color: cssVar("--muted"), lineWidth: 2, priceLineVisible: false, title: "S&P 500" });
+      b.setData(spy);
+    }
+    tvChart.timeScale().fitContent();
+  }
+
+  function renderAll() { renderHeader(); renderPicker(); renderPlan(); renderRecs(); renderHoldings(); renderNews(); renderValueChart(); renderMix(); renderTracker(); }
 
   function setMsg(text, err) { const m = $("formMsg"); m.textContent = text; m.className = "msg" + (err ? " err" : ""); }
 
@@ -497,6 +691,14 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     } finally { $("fSave").disabled = false; }
   });
 
+  const press = (on, off) => { on.setAttribute("aria-pressed", "true"); off.setAttribute("aria-pressed", "false"); };
+  $("fAll").addEventListener("click", () => { pickFilter = "all"; press($("fAll"), $("fBought")); renderTracker(); });
+  $("fBought").addEventListener("click", () => { pickFilter = "bought"; press($("fBought"), $("fAll")); selectedPick = null; renderTracker(); });
+  $("mPrice").addEventListener("click", () => { chartMode = "price"; press($("mPrice"), $("mVs")); renderPickChart(); });
+  $("mVs").addEventListener("click", () => { chartMode = "vs"; press($("mVs"), $("mPrice")); renderPickChart(); });
+  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => renderPickChart()); } catch (e) {}
+  new MutationObserver(() => renderPickChart()).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
   (async () => {
     db = window.claude && window.claude.use ? await window.claude.use("db") : null;
     if (!db) { $("fSave").disabled = true; setMsg("Open this page in claude.ai while signed in to see your brief and holdings.", true); return; }
@@ -509,6 +711,14 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       holdings = snap.docs.map(d => d.data()).filter(h => h && h.ticker).sort((a, b) => a.ticker.localeCompare(b.ticker));
       renderHoldings(); renderMix();
     }, () => setMsg("Lost the connection to your holdings. Reload the page.", true));
+    db.collection("picks").orderBy("recDate", "desc").limit(500).onSnapshot((snap) => {
+      picks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderTracker();
+    }, () => setMsg("Lost the connection to the pick tracker. Reload the page.", true));
+    db.collection("prices").orderBy("date", "desc").limit(400).onSnapshot((snap) => {
+      priceDocs = snap.docs.map(d => d.data()).reverse();
+      renderTracker();
+    }, () => {});
     db.doc("history/backfill").onSnapshot((snap) => { backfill = snap.exists ? snap.data() : null; renderValueChart(); }, () => {});
   })();
 })();
