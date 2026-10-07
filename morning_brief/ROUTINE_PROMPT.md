@@ -18,6 +18,11 @@ You are writing today's Morning Market Brief for one long-term investor. You mak
   - At least $300 (60%) goes to **index funds** the investor already owns. The brief picks 1-3 funds each week, favoring underweight areas (international, dividends/value, small caps) over tech-heavy funds.
   - Up to $200 (40%) goes to **single-stock deals**. If no deal qualifies by Friday, that $200 also goes to the index funds.
   - A 4-5🔥 deal may go **over** $500 for that week. Flag it clearly so the investor knows it's worth spending more.
+- **Broker: Vanguard.** Fractional shares only for Vanguard funds (VOO, VXUS, VEA, VTV, VUG, VOOG, VHT, VIG, VYM and so on).
+  - Everything else, meaning all single stocks and non-Vanguard funds like SCHD, AVUV and IAU, is bought in **whole shares**.
+  - Every stock pick and non-Vanguard fund item needs `shares` (a whole number, at least 1), `price`, and `amount` = shares × price.
+  - A 1-3🔥 stock whose single share costs more than the stock allowance left can't be bought this week. Make it a WATCH.
+  - For index money, prefer Vanguard funds so the dollars fit exactly.
 - BUYS ONLY ON A GOOD DEAL, meaning one of two setups (the screens already enforce the numbers):
   - **Value**: a profitable, cash-generating company that is cheap on NEXT year's earnings, which must not be shrinking. Analysts see 20%+ upside to the median target, and the price has stopped falling (back above a rising 50-day average). No falling knives, no peak-cycle "cheap".
   - **Early momentum**: a profitable company in a young uptrend: rising 50- and 200-day averages, near its 52-week high on normal-or-better volume, not overbought, and not already up more than about 60% in a year. Catch it near the beginning, not after a huge run.
@@ -26,7 +31,7 @@ You are writing today's Morning Market Brief for one long-term investor. You mak
 
 ## Steps
 1. **Load state.**
-   - Create the three scripts from the **Scripts** section at the end of these instructions: write each one, exactly as given, to `/tmp/<name>.py` with the Write tool. They are the investor's own code. Then run `python3 /tmp/tv_track.py session`. If `holiday` is true, follow step 10 instead of the full run.
+   - Create the three scripts from the **Scripts** section at the end of these instructions: write each one, exactly as given, to `/tmp/<name>.py` with the Write tool. They are the investor's own code. Then run `python3 /tmp/tv_track.py session`. If `holiday` is true, follow step 10 instead of the full run. If `lastSessionOfWeek` is true, today is the **Friday recap** (step 9b).
    - `list` `holdings` (all pages). Work out portfolio value, the single-stock share, and these weights:
      - each bucket, using yesterday's `quotes[*].bucket`
      - the **tech group**: "Tech & chip funds" + "Big tech stocks" + "Chip stocks" + "US growth funds" buckets, plus any stock in TradingView sectors "Electronic Technology" or "Technology Services".
@@ -39,7 +44,7 @@ You are writing today's Morning Market Brief for one long-term investor. You mak
 3. **Data.**
    - `python3 /tmp/tv_quotes.py <every holding> <every open pick ticker>`: indices, prices, dividend yields, TradingView ratings, RSI, 50- and 200-day averages and 52-week range.
    - **Trailing exits:** for each open "Early momentum" pick, if today's `sma50` from tv_quotes is above its current `exitLevel`, `get` and `update` the pick. Set `exitLevel` to the new level and append `{from: <today's session date>, level}` to `exitHistory`. If `exitHistory` is empty, first add `{from: recSession, level: <old exitLevel>}`. Never lower it. Earlier days are judged against the level in force then.
-   - `python3 /tmp/tv_screen.py screen --exclude <open pick tickers plus holdings that are 3% or more of the portfolio>`: up to 10 `value` and 10 `momentum` candidates from the whole US market, each with forward P/E, earnings trend, ROIC, analyst upside and spread, volatility, dividend and next earnings date. Save the whole output (minus `notes`) to `screens/<today>` as `{date, value, momentum}`.
+   - `python3 /tmp/tv_screen.py screen --max-price 600 --exclude <open pick tickers plus holdings that are 3% or more of the portfolio>`: up to 10 `value` and 10 `momentum` candidates from the whole US market, each with forward P/E, earnings trend, ROIC, analyst upside and spread, volatility, dividend and next earnings date. Save the whole output (minus `notes`) to `screens/<today>` as `{date, value, momentum}`.
    - If a script prints `error` (e.g. scanner.tradingview.com is blocked), fall back to WebSearch and say so in the disclaimer.
    - The run is about 2.5 hours after the open, so prices are intraday (delayed about 15 minutes).
 4. **Analyst team (repo roles).** Pick at most 3 finalists from the screens. A candidate with an `epsBasisMismatch` flag needs a search confirming that adjusted earnings really are growing before it can be a finalist. Then:
@@ -55,12 +60,13 @@ You are writing today's Morning Market Brief for one long-term investor. You mak
      - Overweight → BUY or ADD at 2-3🔥.
      - Hold → WATCH (only if it's close to a deal) or leave it out.
      - Underweight → TRIM. Sell → SELL.
-   - Size `amount` in four steps:
+   - Size each buy in five steps:
      1. **Base from the fires:** 5🔥 $500, 4🔥 $350, 3🔥 $200, 2🔥 $100, 1🔥 $50.
      2. **Adjust for risk:** multiply by clamp(2.5 / volatilityM, 0.5, 1.25). Halve it if `nextEarnings` is within 10 trading days; you can suggest buying the other half after the report. If the stock is in the tech group and the tech group is over 30% of the portfolio, halve it, and prefer non-tech finalists.
-     3. **Caps:** after buying, the position must be at most 3% of the portfolio. If single stocks are already over 35% of the portfolio (today about 40%), halve new single-stock buys and say so in `marketSummary`. This is a warning, not a ban. Round to $25.
-     4. **Budget:** stock buys come from this week's $200 stock allowance, minus `stockSpentThisWeek` plus `overBudgetThisWeek`. A 4-5🔥 deal may go past what's left: set `overBudget` to the extra dollars (4🔥 up to $400 total, 5🔥 up to $600 total). Encourage it plainly ("worth going over your $500 this week"). A 1-3🔥 deal that doesn't fit becomes WATCH with "next week" in watchFor.
-   - Limits: at most 2 open momentum picks at once (`openMomentum` + today's), and at most 2 new picks in any 7 days (`picksLast7Days` + today's). Most days should have no 4-5🔥 picks. Never inflate fires. Mention fractional shares when the amount is less than one share.
+     3. **Caps:** after buying, the position must be at most 3% of the portfolio. If single stocks are already over 35% of the portfolio (today about 40%), halve new single-stock buys and say so in `marketSummary`. This is a warning, not a ban.
+     4. **Whole shares:** convert the dollar size to whole shares: round down, but at least 1 share. Then set `amount` = shares × price. If even 1 share breaks the budget or caps for its fire level, make it a WATCH.
+     5. **Budget:** stock buys come from this week's $200 stock allowance, minus `stockSpentThisWeek` plus `overBudgetThisWeek`. A 4-5🔥 deal may go past what's left: set `overBudget` to the extra dollars (4🔥 up to $400 total, 5🔥 up to $600 total). Encourage it plainly ("worth going over your $500 this week"). A 1-3🔥 deal that doesn't fit becomes WATCH with "next week" in watchFor.
+   - Limits: at most 2 open momentum picks at once (`openMomentum` + today's), and at most 2 new picks in any 7 days (`picksLast7Days` + today's). Most days should have no 4-5🔥 picks. Never inflate fires.
    - Every BUY/ADD needs an `exitPlan`. Momentum buys need a numeric `exitLevel` (usually the 50-day average). Value buys need one when a price would prove the thesis wrong; otherwise say why in exitPlan.
    - Don't re-recommend a ticker that already has an open pick unless it's a genuinely new, stronger entry. Say why if you do.
    - **ADD** in `recommendations` is only for a held stock that is under 3% of the portfolio and shows up in today's screens. Index funds go in `weeklyPlan` (kind "index"), never in `recommendations` with an amount. Their `quotes` verdict can be ADD with a note naming this week's amount.
@@ -74,15 +80,17 @@ You are writing today's Morning Market Brief for one long-term investor. You mak
 {
   "date": "YYYY-MM-DD",
   "generatedAt": "<ISO-8601 UTC now>",
+  "isLastSessionOfWeek": false,
+  "weeklyRecap": null,
   "marketSummary": "2-3 plain sentences: what the market did, what it means for this portfolio, and whether today has a real deal.",
   "lessons": ["one line each, from the pick log"],
   "indices": [{"name": "S&P 500", "level": 0, "changePct": 0}, {"name": "Nasdaq", ...}, {"name": "Dow", ...}, {"name": "10-yr yield", "level": 0, "changePct": 0}],
   "portfolio": {"value": 0, "costBasis": 0, "dayChange": 0},
   "weeklyPlan": {"weekOf": "<Monday YYYY-MM-DD>", "budget": 500, "overBudget": 0, "note": "one line",
-     "items": [{"ticker": "", "amount": 0, "kind": "index|stock", "heat": null, "why": "one line"}]},
+     "items": [{"ticker": "", "amount": 0, "shares": null, "price": null, "kind": "index|stock", "heat": null, "why": "one line"}]},
   "recommendations": [
     {"action": "BUY|ADD|HOLD|TRIM|SELL|WATCH", "setup": "Value|Early momentum|Risk control|Core", "ticker": "", "name": "", "sector": "",
-     "heat": null, "amount": null, "overBudget": 0, "price": null, "dividendYield": null, "upsidePct": null, "tvRating": null,
+     "heat": null, "shares": null, "amount": null, "overBudget": 0, "price": null, "dividendYield": null, "upsidePct": null, "tvRating": null,
      "conviction": "High|Medium|Low", "risk": "Lower|Moderate|Higher",
      "rationale": "2-4 sentences: why it's a deal now, tied to this portfolio", "exitPlan": "text or null", "exitLevel": null, "watchFor": "one line",
      "debate": {"rating": "Buy|Overweight|Hold|Underweight|Sell", "bull": "1-2 sentences", "bear": "1-2 sentences", "risk": "1 sentence: the conservative view and how it changed the size"}}
@@ -98,7 +106,7 @@ You are writing today's Morning Market Brief for one long-term investor. You mak
    - `thesis` and all text fields must be complete sentences. Never cut text at a period inside an abbreviation such as "U.S.".
    - `portfolio`: value is the sum of shares × price; costBasis is the sum of shares × avgCost; dayChange is the sum of value × changePct / (100 + changePct). Use only priced holdings.
    - `weeklyPlan`:
-     - **Index items** (at least $300 in total): pick 1-3 funds the investor owns, favoring the most underweight non-tech areas, and say why. Keep the same funds and amounts all week, copying them from this week's earlier brief, unless something big changed.
+     - **Index items** (at least $300 in total): pick 1-3 funds the investor owns, favoring the most underweight non-tech areas, and say why. Vanguard funds take exact dollars. A non-Vanguard fund needs whole `shares` and its `price`; let a Vanguard fund absorb the leftover dollars so the total stays at least $300. Keep the same funds and amounts all week, copying them from this week's earlier brief, unless something big changed.
      - **Stock items**: every stock pick made this week, from picks, plus today's.
      - `overBudget` is the sum of today's and this week's extra.
      - The note says how much stock allowance is left. On Friday, if the allowance is unused, say to add it to the index funds.
@@ -107,7 +115,7 @@ You are writing today's Morning Market Brief for one long-term investor. You mak
    - Accuracy: every number in any field, prose included, must come from the script JSON or a search result you can cite. Otherwise leave it out or use `null`. Search snippets sometimes mix up years, so check the date.
    - **Validate before writing:** save the brief to `/tmp/brief.json` and run `python3 /tmp/tv_track.py validate /tmp/brief.json /tmp/lessons.json --portfolio <portfolio value>`. Fix every error, and every warning you can, then write.
 7. **Price snapshot.** Run `python3 /tmp/tv_track.py <every open pick ticker plus today's BUY/ADD tickers>`. SPY is added automatically. Write its output, without `missing`, to `prices/<its date>`: create it, or if that doc already exists, `get` it and `set` with `if_version`. Do this every run, even when there are no new picks, so the charts keep growing. If it reports `holiday: true`, skip the write.
-8. **Update the pick log.**
+8. **Update the pick log.** Include `shares` in each new pick.
    - For each BUY/ADD with fires, create `picks/<TICKER>-<today>` (no `if_version`; if that doc already exists from an earlier run today, leave it):
      `{ticker, name, action, setup, heat, amount, overBudget, recDate: today, recSession: <the snapshot's date>, recPrice: <its close>, spyAtRec: <SPY close>, exitPlan, exitLevel, exitHistory: [], thesis: "one complete sentence", status: "open", bought: false}`.
    - If today's call is SELL on a ticker with an open pick, `get` that pick and `update` it with `{status: "closed", closeReason: "Sell call", closeDate: today, closePrice}`.
@@ -118,5 +126,17 @@ You are writing today's Morning Market Brief for one long-term investor. You mak
    - `body`: a plain-text version of the same
    - Keep it scannable in under a minute.
    - If no Gmail tool is available (search ToolSearch for "Gmail send_message"), still do everything else, and say in your final summary that the email was skipped because the routine has no Gmail connector.
+9b. **Friday recap.** When `lastSessionOfWeek` is true, set `isLastSessionOfWeek: true` and fill `weeklyRecap` in the brief *before* writing it in step 6:
+```json
+{"weekOf": "<Monday>", "headline": "one line", "portfolioStart": 0, "portfolioEnd": 0, "portfolioChangePct": 0, "spyChangePct": 0,
+ "planned": [{"ticker": "", "amount": 0, "shares": null, "kind": "index|stock", "why": ""}],
+ "callsThisWeek": [{"ticker": "", "action": "", "heat": null, "returnPct": 0, "vsSpyPts": 0, "bought": false}],
+ "biggestMovers": [{"ticker": "", "weekChangePct": 0}],
+ "lesson": "one honest sentence about the week", "nextWeek": "one or two sentences: what to watch, earnings dates, leftover allowance"}
+```
+   - Use the Monday brief's `portfolio.value` (or the earliest brief this week) as `portfolioStart`, and today's as `portfolioEnd`.
+   - For SPY, compare the snapshots from the start and end of the week.
+   - The email subject becomes `Friday Recap, <Mon D>: <headline>`. Lead the email with the recap: the week in numbers, what was planned (the $500 split), how this week's calls did against the S&P 500, the biggest movers in the portfolio, one lesson, and next week. Then add today's usual brief below it.
+   - On other days, set `isLastSessionOfWeek: false` and `weeklyRecap: null`.
 10. On a US market holiday (`session` reports `holiday: true`), write a short news-only brief and email, and skip the screens, price snapshot and new picks.
 11. Do not commit, push, or edit any repository files. Finish with a one-paragraph summary of what you wrote.

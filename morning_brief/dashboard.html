@@ -202,6 +202,12 @@ form.add .chk input { width: auto; }
   #showAllHold { display: inline-block; }
 }
 #showAllHold { display: none; margin-top: 10px; }
+.recap { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 14px; }
+.recap h3 { margin: 0; font-size: 1.05rem; text-wrap: balance; }
+.recap .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 14px; }
+.recap .cols > div { min-width: 0; }
+.recap ul { margin: 6px 0 0; padding-left: 18px; font-size: 0.88rem; }
+.recap p { margin: 0; }
 .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 10px; padding: 22px; color: var(--muted); }
 footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
 </style>
@@ -222,6 +228,11 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     <div class="indices" id="indices" hidden></div>
     <p class="status" id="statusMsg" role="status"></p>
   </header>
+
+  <section aria-labelledby="recapH" id="recapBox" hidden>
+    <div class="sec-head"><h2 id="recapH">Friday recap</h2><span class="eyebrow" id="recapWeek"></span></div>
+    <div class="recap" id="recap"></div>
+  </section>
 
   <section aria-labelledby="recsH">
     <div class="sec-head">
@@ -396,7 +407,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       if (r.setup) top.append(el("span", "setup", r.setup));
       if (r.heat) top.append(heat(r.heat));
       const facts = el("div", "facts");
-      if (r.amount) facts.append(el("span", "amount", "Put in " + money(r.amount)));
+      if (r.amount) facts.append(el("span", "amount", "Put in " + money(r.amount) + (r.shares ? " · " + r.shares + (r.shares === 1 ? " share" : " shares") : "")));
       const overLine = r.overBudget ? el("p", "over", "Worth going over your weekly $500: " + money(r.overBudget) + " of this is extra.") : null;
       if (r.price != null) facts.append(el("span", "num", money(r.price)));
       if (r.upsidePct != null) facts.append(el("span", "num " + signCls(r.upsidePct), "Analyst target " + pct(r.upsidePct)));
@@ -445,7 +456,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     items.forEach(i => {
       const kind = i.kind || (i.park ? "index" : "stock");
       const seg = el("span", kind === "index" ? "idx-seg" : ""); seg.style.flex = String(i.amount || 0); bar.append(seg);
-      const li = el("li"); const t = el("div"); t.append(el("b", null, i.ticker + " · " + money(i.amount)));
+      const li = el("li"); const t = el("div"); t.append(el("b", null, i.ticker + " · " + money(i.amount) + (i.shares ? " (" + i.shares + (i.shares === 1 ? " share)" : " shares)") : "")));
       t.append(document.createTextNode(" "), el("span", "kind " + kind, kind === "index" ? "Index fund" : "Stock"));
       if (i.heat) { t.append(document.createTextNode(" ")); t.append(heat(i.heat)); }
       li.append(t, el("span", "muted", i.why || "")); list.append(li);
@@ -453,6 +464,28 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     parts.push(bar, list);
     if (wp.note) parts.push(el("p", "muted", wp.note));
     box.replaceChildren(...parts); box.hidden = false;
+  }
+
+  function renderRecap() {
+    const b = current(), box = $("recapBox"), r = b && b.weeklyRecap;
+    if (!r) { box.hidden = true; return; }
+    box.hidden = false;
+    $("recapWeek").textContent = r.weekOf ? "Week of " + shortDate(r.weekOf) : "";
+    const tile = (label, v, cls) => { const d = el("div", "total"); d.append(el("span", "eyebrow", label), el("b", cls || "", v)); return d; };
+    const tiles = el("div", "totals");
+    tiles.append(tile("Portfolio this week", pct(r.portfolioChangePct), signCls(r.portfolioChangePct)),
+      tile("S&P 500 this week", pct(r.spyChangePct), signCls(r.spyChangePct)),
+      tile("Value now", money(r.portfolioEnd)));
+    const list = (title, items, fmt) => { const d = el("div"); d.append(el("span", "eyebrow", title)); const ul = el("ul"); (items || []).forEach(x => ul.append(el("li", null, fmt(x)))); if (!(items || []).length) ul.append(el("li", "muted", "None")); d.append(ul); return d; };
+    const cols = el("div", "cols");
+    cols.append(
+      list("Planned buys", r.planned, x => x.ticker + " · " + money(x.amount) + (x.shares ? " (" + x.shares + " sh)" : "") + (x.why ? " · " + x.why : "")),
+      list("This week's calls", r.callsThisWeek, x => x.action + " " + x.ticker + (x.heat ? " " + "\u{1F525}".repeat(x.heat) : "") + " · " + pct(x.returnPct) + " (" + pts(x.vsSpyPts) + " vs S&P)" + (x.bought ? " · bought" : "")),
+      list("Biggest movers", r.biggestMovers, x => x.ticker + " " + pct(x.weekChangePct)));
+    const parts = [el("h3", null, r.headline || "The week in review"), tiles, cols];
+    if (r.lesson) parts.push(el("p", null, "Lesson: " + r.lesson));
+    if (r.nextWeek) parts.push(el("p", "muted", "Next week: " + r.nextWeek));
+    $("recap").replaceChildren(...parts);
   }
 
   const SVGNS = "http://www.w3.org/2000/svg";
@@ -651,7 +684,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     const status = closed ? (pk.closeReason || "Closed") : exitHit ? "Exit level hit" : today >= yearEnd ? "1 year done" : "Open";
     return { last, ret, spyRet, vs: ret != null && spyRet != null ? ret - spyRet : null, exitHit, status, days: cs.length, end };
   }
-  function visiblePicks() { return picks.filter(p => pickFilter === "all" || p.bought); }
+  function visiblePicks() { return picks.filter(p => p.status !== "withdrawn" && (pickFilter === "all" || p.bought)); }
   const pts = (v) => v == null ? "—" : (v > 0 ? "+" : "") + v.toFixed(2) + " pts";
 
   function selectPick(id) {
@@ -800,7 +833,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     if (chartMode === "price") requestAnimationFrame(() => { const r = ts.getVisibleLogicalRange(); if (r) ts.setVisibleLogicalRange({ from: r.from - 2, to: r.to }); });
   }
 
-  function renderAll() { renderHeader(); renderPicker(); renderPlan(); renderRecs(); renderHoldings(); renderNews(); renderValueChart(); renderMix(); renderTracker(); }
+  function renderAll() { renderHeader(); renderPicker(); renderRecap(); renderPlan(); renderRecs(); renderHoldings(); renderNews(); renderValueChart(); renderMix(); renderTracker(); }
 
   function status(text) { $("statusMsg").textContent = text; }
   function setMsg(text, err) { const m = $("formMsg"); m.textContent = text; m.className = "msg" + (err ? " err" : ""); }
@@ -811,11 +844,11 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     catch (e) { setMsg("Could not remove " + ticker + ": " + (e && e.message || "try again."), true); renderHoldings(); }
   }
 
-  $("briefPick").addEventListener("change", (e) => { selectedId = e.target.value; renderHeader(); renderPlan(); renderRecs(); renderNews(); });
+  $("briefPick").addEventListener("change", (e) => { selectedId = e.target.value; renderHeader(); renderRecap(); renderPlan(); renderRecs(); renderNews(); });
   $("showAllHold").addEventListener("click", () => { showAllHold = !showAllHold; renderHoldings(); });
   const syncCostLabel = () => { $("fCostLbl").textContent = $("fAddMode").checked ? "Price paid ($)" : "Avg cost ($)"; };
   $("fAddMode").addEventListener("change", syncCostLabel);
-  $("backLatest").addEventListener("click", () => { selectedId = null; renderHeader(); renderPicker(); renderPlan(); renderRecs(); renderNews(); $("recsH").focus && $("recsH").focus(); });
+  $("backLatest").addEventListener("click", () => { selectedId = null; renderHeader(); renderPicker(); renderRecap(); renderPlan(); renderRecs(); renderNews(); $("recsH").focus && $("recsH").focus(); });
 
   $("addForm").addEventListener("submit", async (e) => {
     e.preventDefault();

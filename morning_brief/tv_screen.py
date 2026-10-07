@@ -1,6 +1,7 @@
 """Screen US stocks on TradingView for two buy setups, plus history for current holdings.
 
-  python3 tv_screen.py screen [--exclude T1,T2]  -> {"value": [...], "momentum": [...], "notes": [...]}
+  python3 tv_screen.py screen [--exclude T1,T2] [--max-price N]  -> {"value": [...], "momentum": [...], "notes": [...]}
+      --max-price: skip stocks whose single share costs more than N (whole shares only)
       --exclude: tickers to skip (holdings and open picks) so they don't use up the top-10 slots
   python3 tv_screen.py history T=SHARES ...  -> past values of these holdings (1W..1Y ago)
 
@@ -37,6 +38,7 @@ BASE = [
 ]
 NOTES = []
 EXCLUDE = set()
+MAX_PRICE = None  # whole shares only (broker does fractional only for Vanguard funds)
 
 
 def post(body):
@@ -51,7 +53,8 @@ def rows(filters, n=800):
                 "sort": {"sortBy": "market_cap_basic", "sortOrder": "desc"}})
     if res.get("totalCount", 0) > n:
         NOTES.append(f"screen truncated: {res['totalCount']} matches, kept the largest {n}")
-    return [d for d in (dict(zip(COLS, r["d"])) for r in res.get("data", [])) if d["name"] not in EXCLUDE]
+    return [d for d in (dict(zip(COLS, r["d"])) for r in res.get("data", []))
+            if d["name"] not in EXCLUDE and (MAX_PRICE is None or (d.get("close") or 0) <= MAX_PRICE)]
 
 
 def r1(v):
@@ -183,6 +186,8 @@ def history(pairs):
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "screen"
     try:
+        if "--max-price" in sys.argv:
+            MAX_PRICE = float(sys.argv[sys.argv.index("--max-price") + 1])
         if "--exclude" in sys.argv:
             EXCLUDE.update(t.strip().upper() for t in sys.argv[sys.argv.index("--exclude") + 1].split(",") if t.strip())
         if mode == "history":

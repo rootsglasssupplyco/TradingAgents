@@ -43,6 +43,14 @@ def is_trading_day(day):
     return day.weekday() < 5 and day.isoformat() not in HOLIDAYS
 
 
+def last_session_of_week(day):
+    """True when no later trading day falls in the same Monday-Sunday week (Friday, or Thursday before a Friday holiday)."""
+    nxt = day + dt.timedelta(days=1)
+    while not is_trading_day(nxt):
+        nxt += dt.timedelta(days=1)
+    return nxt.isocalendar()[1] != day.isocalendar()[1]
+
+
 def prev_trading_day(day):
     day -= dt.timedelta(days=1)
     while not is_trading_day(day):
@@ -238,10 +246,20 @@ def lessons(picks_dir, prices_dir):
             "note": "Price returns only (dividends excluded). Horizons count trading days from the call; sold picks hold cash flat. Compare groups only at the same horizon."}
 
 
-REQUIRED = ["date", "generatedAt", "marketSummary", "lessons", "indices", "portfolio", "weeklyPlan",
+REQUIRED = ["date", "generatedAt", "isLastSessionOfWeek", "marketSummary", "lessons", "indices", "portfolio", "weeklyPlan",
             "recommendations", "quotes", "news", "disclaimer"]
 WEEKLY_BUDGET, INDEX_MIN, STOCK_ALLOWANCE = 500.0, 300.0, 200.0
 HOT_MAX = {4: 400.0, 5: 600.0}  # a 4-5 fire deal may go over the weekly $500, up to this much
+# The broker (Vanguard) sells fractional shares only of Vanguard funds; everything else is whole shares.
+VANGUARD = {"VOO", "VTI", "VXUS", "VEA", "VWO", "VTV", "VUG", "VOOG", "VOOV", "VHT", "VGT", "VIG", "VYM", "VNQ",
+            "BND", "BNDX", "VB", "VBR", "VO", "VXF", "VT", "VDC", "VPU", "VDE", "VFH", "VIS", "VAW", "VCR", "VOX", "MGK", "MGV"}
+
+
+def whole_share_check(t, amount, shares, price, errors):
+    if not isinstance(shares, int) or shares < 1:
+        errors.append(f"{t}: not a Vanguard fund, so give a whole number of `shares` (at least 1)")
+    elif price and amount and abs(shares * price - amount) > max(0.03 * amount, 2):
+        errors.append(f"{t}: amount ${amount:.2f} should be shares x price ({shares} x ${price:.2f} = ${shares * price:.2f})")
 
 
 def validate(brief_path, lessons_path, portfolio=None):
@@ -274,6 +292,7 @@ def validate(brief_path, lessons_path, portfolio=None):
         elif r.get("exitLevel") is None:
             warnings.append(f"{t}: no numeric exitLevel; say why in exitPlan")
         amt = r.get("amount") or 0
+        whole_share_check(t, amt, r.get("shares"), r.get("price"), errors)
         cap = HOT_MAX.get(heat, BASE_AMOUNT[heat] * 1.25)
         if not amt:
             errors.append(f"{t}: missing amount")
@@ -294,6 +313,11 @@ def validate(brief_path, lessons_path, portfolio=None):
                       f"${allowance_left:.0f} is left; mark the extra as overBudget (4-5 fire only) or shrink it")
     wp = b.get("weeklyPlan") or {}
     index_total = sum(i.get("amount") or 0 for i in wp.get("items", []) if i.get("kind") == "index")
+    for i in wp.get("items", []):
+        if i.get("kind") == "index" and i.get("ticker") not in VANGUARD:
+            whole_share_check(i.get("ticker", "?"), i.get("amount") or 0, i.get("shares"), i.get("price"), errors)
+    if b.get("weeklyRecap") is None and b.get("isLastSessionOfWeek"):
+        errors.append("last session of the week: add weeklyRecap")
     if wp and index_total + 0.01 < INDEX_MIN:
         errors.append(f"weeklyPlan puts ${index_total:.0f} in index funds; the minimum is ${INDEX_MIN:.0f}")
     over = sum(r.get("overBudget") or 0 for r in buys)
@@ -315,7 +339,8 @@ if __name__ == "__main__":
             now = dt.datetime.now(ZoneInfo("America/New_York"))
             date, prev, intraday, holiday = session(now)
             print(json.dumps({"date": date, "prevSession": prev, "intraday": intraday, "holiday": holiday,
-                              "earlyClose": now.date().isoformat() in EARLY_CLOSE}))
+                              "earlyClose": now.date().isoformat() in EARLY_CLOSE,
+                              "lastSessionOfWeek": last_session_of_week(dt.date.fromisoformat(date))}))
             sys.exit(0)
         if len(sys.argv) > 1 and sys.argv[1] == "validate":
             print(json.dumps(validate(sys.argv[2], sys.argv[3], arg("--portfolio")), indent=1))
