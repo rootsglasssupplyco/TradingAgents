@@ -1,0 +1,369 @@
+<title>Morning Market Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a pre-open trading sheet — summary line, today's calls, your positions, then the news that drove them. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --ink: #141a26;
+  --muted: #5b6577;
+  --line: #dde2ea;
+  --accent: #2344c9;
+  --accent-soft: #e6ebfb;
+  --up: #11804a;
+  --up-soft: #e2f4ea;
+  --down: #c2302b;
+  --down-soft: #fbe7e5;
+  --warn: #9a6200;
+  --warn-soft: #fbf0d9;
+  --flat-soft: #eceff4;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131c; --surface: #161d29; --ink: #e7ebf2; --muted: #98a2b4; --line: #283244;
+    --accent: #7d97ff; --accent-soft: #1d2747;
+    --up: #4cc985; --up-soft: #12301f; --down: #ff7b72; --down-soft: #3a1714;
+    --warn: #f0b44c; --warn-soft: #362a10; --flat-soft: #222b3a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131c; --surface: #161d29; --ink: #e7ebf2; --muted: #98a2b4; --line: #283244;
+  --accent: #7d97ff; --accent-soft: #1d2747;
+  --up: #4cc985; --up-soft: #12301f; --down: #ff7b72; --down-soft: #3a1714;
+  --warn: #f0b44c; --warn-soft: #362a10; --flat-soft: #222b3a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 36px; }
+h1, h2 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; line-height: 1.1; }
+h2 { font-size: 1.3rem; font-weight: 700; }
+.eyebrow { font-family: var(--f-data); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.up { color: var(--up); } .down { color: var(--down); }
+a { color: var(--accent); }
+button, input, select { font: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Header */
+header { display: grid; gap: 14px; }
+.head-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.head-row > div { min-width: 0; }
+.mood { font-size: 1.05rem; max-width: 70ch; margin: 0; }
+.picker { display: flex; align-items: center; gap: 8px; }
+.picker select { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+.indices { display: flex; flex-wrap: wrap; gap: 8px 22px; padding-block: 12px; border-block: 1px solid var(--line); }
+.idx { display: flex; gap: 8px; align-items: baseline; }
+.idx b { font-weight: 600; font-size: 0.85rem; }
+
+/* Section heads */
+.sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+
+/* Recommendations */
+.recs { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.rec { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.rec-top { display: flex; align-items: center; gap: 10px; }
+.tkr { font-family: var(--f-data); font-weight: 500; font-size: 1.05rem; }
+.rec-name { color: var(--muted); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.chip { font-family: var(--f-data); font-size: 0.72rem; font-weight: 500; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
+.chip.BUY, .chip.ADD { background: var(--up-soft); color: var(--up); }
+.chip.SELL { background: var(--down-soft); color: var(--down); }
+.chip.TRIM { background: var(--warn-soft); color: var(--warn); }
+.chip.HOLD, .chip.WATCH { background: var(--flat-soft); color: var(--muted); }
+.facts { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.82rem; }
+.facts span { white-space: nowrap; }
+.rec p { margin: 0; }
+.rec .watch { font-size: 0.85rem; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 8px; }
+
+/* Holdings */
+.totals { display: flex; flex-wrap: wrap; gap: 10px 32px; margin-bottom: 14px; }
+.total b { display: block; font-family: var(--f-data); font-size: 1.35rem; font-weight: 500; }
+.table-box { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { padding: 10px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th { font-family: var(--f-data); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 500; }
+th:first-child, td:first-child { text-align: left; }
+td.note { text-align: left; white-space: normal; min-width: 220px; color: var(--muted); font-size: 0.85rem; }
+tbody tr:last-child td { border-bottom: 0; }
+.row-actions { display: inline-flex; gap: 6px; }
+.btn { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font-weight: 500; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); padding: 4px 10px; font-size: 0.82rem; }
+.btn.danger { background: var(--down); color: #fff; padding: 4px 10px; font-size: 0.82rem; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+form.add { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 14px; }
+form.add label { display: grid; gap: 4px; font-size: 0.78rem; color: var(--muted); }
+form.add input { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 130px; }
+.msg { font-size: 0.85rem; min-height: 1.3em; margin: 8px 0 0; }
+.msg.err { color: var(--down); }
+
+/* News */
+.news { list-style: none; margin: 0; padding: 0; display: grid; }
+.news li { display: grid; grid-template-columns: 10px 1fr; gap: 12px; padding-block: 14px; border-bottom: 1px solid var(--line); }
+.news li > div { min-width: 0; }
+.dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 8px; background: var(--muted); }
+.dot.positive { background: var(--up); } .dot.negative { background: var(--down); }
+.news h3 { margin: 0 0 4px; font-size: 1rem; font-weight: 600; }
+.news p { margin: 0 0 4px; max-width: 75ch; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.78rem; }
+.tags .t { font-family: var(--f-data); background: var(--accent-soft); color: var(--accent); padding: 1px 6px; border-radius: 3px; }
+
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 10px; padding: 22px; color: var(--muted); }
+footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="head-row">
+      <div>
+        <div class="eyebrow" id="briefMeta">Weekday mornings · 7:00 AM ET</div>
+        <h1 id="briefTitle">Morning Market Brief</h1>
+      </div>
+      <div class="picker" id="pickerBox" hidden>
+        <label class="eyebrow" for="briefPick">Brief</label>
+        <select id="briefPick"></select>
+      </div>
+    </div>
+    <p class="mood" id="mood">Waiting for the first brief. It is written each weekday before the open and lands here and in your inbox.</p>
+    <div class="indices" id="indices" hidden></div>
+  </header>
+
+  <section aria-labelledby="recsH">
+    <div class="sec-head">
+      <h2 id="recsH">Today's calls</h2>
+      <span class="eyebrow">Long-term · quality first · yield counts</span>
+    </div>
+    <div class="recs" id="recs"><div class="empty">Buy, add, trim and sell ideas appear here with the reasoning behind each one.</div></div>
+  </section>
+
+  <section aria-labelledby="holdH">
+    <div class="sec-head">
+      <h2 id="holdH">Your holdings</h2>
+      <span class="eyebrow" id="priceAsOf">Prices from the latest brief</span>
+    </div>
+    <div class="totals" id="totals" hidden></div>
+    <div class="table-box">
+      <table>
+        <thead><tr><th>Ticker</th><th>Shares</th><th>Avg cost</th><th>Price</th><th>Day</th><th>Value</th><th>Gain</th><th>Yield</th><th>Today's view</th><th></th></tr></thead>
+        <tbody id="holdRows"><tr><td colspan="10" class="note">No holdings yet. Add your first position below; the next brief will price it and give it a buy, hold or sell view.</td></tr></tbody>
+      </table>
+    </div>
+    <form class="add" id="addForm" autocomplete="off">
+      <label for="fTicker">Ticker<input id="fTicker" required maxlength="10" placeholder="MSFT"></label>
+      <label for="fShares">Shares<input id="fShares" type="number" step="any" min="0" required placeholder="10"></label>
+      <label for="fCost">Avg cost ($)<input id="fCost" type="number" step="any" min="0" placeholder="415.20"></label>
+      <button class="btn" id="fSave" type="submit">Save position</button>
+    </form>
+    <p class="msg" id="formMsg"></p>
+  </section>
+
+  <section aria-labelledby="newsH">
+    <div class="sec-head"><h2 id="newsH">Market news</h2></div>
+    <ul class="news" id="news"><li><span class="dot"></span><div class="muted">Headlines that move the market or your positions will be listed here.</div></li></ul>
+  </section>
+
+  <footer id="disclaimer">Research summaries written by Claude from public news and quotes, which can be delayed. Not financial advice; check prices with your broker before you trade.</footer>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+  const pct = (v) => (v == null || isNaN(v)) ? "—" : (v > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
+  const money = (v) => (v == null || isNaN(v)) ? "—" : usd.format(v);
+  const signCls = (v) => v > 0 ? "up" : v < 0 ? "down" : "";
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+
+  let briefs = [];        // newest first
+  let selectedId = null;
+  let holdings = [];
+  let db = null;
+  let pendingDelete = null;
+
+  const current = () => briefs.find(b => b.id === selectedId) || briefs[0] || null;
+  const latest = () => briefs[0] || null;
+
+  function fmtDate(iso) {
+    const d = new Date(iso + "T12:00:00");
+    return isNaN(d) ? iso : d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  }
+
+  function renderHeader() {
+    const b = current();
+    if (!b) return;
+    $("briefTitle").textContent = fmtDate(b.date);
+    let meta = "Morning Market Brief";
+    if (b.generatedAt) {
+      const t = new Date(b.generatedAt);
+      if (!isNaN(t)) meta += " · written " + t.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " ET";
+    }
+    $("briefMeta").textContent = meta;
+    $("mood").textContent = b.marketSummary || "";
+    const box = $("indices"); box.replaceChildren();
+    (b.indices || []).forEach(i => {
+      const d = el("div", "idx");
+      d.append(el("b", null, i.name), el("span", "num", i.level != null ? Number(i.level).toLocaleString("en-US") : ""), el("span", "num " + signCls(i.changePct), pct(i.changePct)));
+      box.append(d);
+    });
+    box.hidden = !(b.indices || []).length;
+    if (b.disclaimer) $("disclaimer").textContent = b.disclaimer;
+  }
+
+  function renderPicker() {
+    const sel = $("briefPick"); sel.replaceChildren();
+    briefs.forEach(b => { const o = el("option", null, fmtDate(b.date)); o.value = b.id; sel.append(o); });
+    sel.value = current() ? current().id : "";
+    $("pickerBox").hidden = briefs.length < 2;
+  }
+
+  function renderRecs() {
+    const b = current(), box = $("recs");
+    const recs = (b && b.recommendations) || [];
+    if (!recs.length) {
+      box.replaceChildren(el("div", "empty", b ? "No new trades today. Holding steady is the call." : "Buy, add, trim and sell ideas appear here with the reasoning behind each one."));
+      return;
+    }
+    box.replaceChildren(...recs.map(r => {
+      const c = el("article", "rec");
+      const top = el("div", "rec-top");
+      const action = String(r.action || "HOLD").toUpperCase();
+      top.append(el("span", "chip " + action, action), el("span", "tkr", r.ticker), el("span", "rec-name", r.name || ""));
+      const facts = el("div", "facts");
+      if (r.price != null) facts.append(el("span", "num", money(r.price)));
+      if (r.dividendYield != null) facts.append(el("span", "num", "Yield " + Number(r.dividendYield).toFixed(2) + "%"));
+      if (r.sector) facts.append(el("span", "muted", r.sector));
+      if (r.conviction) facts.append(el("span", "muted", r.conviction + " conviction"));
+      if (r.risk) facts.append(el("span", "muted", r.risk + " risk"));
+      c.append(top, facts, el("p", null, r.rationale || ""));
+      if (r.watchFor) c.append(el("div", "watch", "Watch: " + r.watchFor));
+      return c;
+    }));
+  }
+
+  function renderHoldings() {
+    const lb = latest();
+    const quotes = (lb && lb.quotes) || {};
+    $("priceAsOf").textContent = lb ? "Prices as of the " + fmtDate(lb.date) + " brief" : "Prices from the latest brief";
+    const body = $("holdRows");
+    if (!holdings.length) {
+      body.replaceChildren(); const tr = el("tr"); const td = el("td", "note", "No holdings yet. Add your first position below; the next brief will price it and give it a buy, hold or sell view.");
+      td.colSpan = 10; tr.append(td); body.append(tr); $("totals").hidden = true; return;
+    }
+    let value = 0, cost = 0, dayChg = 0, priced = 0;
+    body.replaceChildren(...holdings.map(h => {
+      const q = quotes[h.ticker] || {};
+      const price = q.price;
+      const val = price != null ? price * h.shares : null;
+      const basis = h.avgCost != null ? h.avgCost * h.shares : null;
+      const gain = val != null && basis != null ? val - basis : null;
+      if (val != null) { value += val; priced++; if (q.changePct != null) dayChg += val - val / (1 + q.changePct / 100); }
+      if (val != null && basis != null) cost += basis;
+      const tr = el("tr");
+      const tk = el("td"); tk.append(el("span", "tkr", h.ticker));
+      const view = el("td", "note");
+      if (q.verdict) { const v = String(q.verdict).toUpperCase(); view.append(el("span", "chip " + v, v), document.createTextNode(" " + (q.note || ""))); }
+      else view.textContent = lb ? "Priced in the next brief." : "";
+      const act = el("td"); const wrap = el("span", "row-actions");
+      if (pendingDelete === h.ticker) {
+        const yes = el("button", "btn danger", "Remove"); yes.type = "button"; yes.onclick = () => removeHolding(h.ticker);
+        const no = el("button", "btn ghost", "Keep"); no.type = "button"; no.onclick = () => { pendingDelete = null; renderHoldings(); };
+        wrap.append(yes, no);
+      } else {
+        const ed = el("button", "btn ghost", "Edit"); ed.type = "button"; ed.onclick = () => { $("fTicker").value = h.ticker; $("fShares").value = h.shares; $("fCost").value = h.avgCost ?? ""; $("fShares").focus(); };
+        const rm = el("button", "btn ghost", "Remove"); rm.type = "button"; rm.onclick = () => { pendingDelete = h.ticker; renderHoldings(); };
+        wrap.append(ed, rm);
+      }
+      act.append(wrap);
+      tr.append(tk,
+        el("td", "num", Number(h.shares).toLocaleString("en-US", { maximumFractionDigits: 4 })),
+        el("td", "num", money(h.avgCost)),
+        el("td", "num", money(price)),
+        el("td", "num " + signCls(q.changePct), pct(q.changePct)),
+        el("td", "num", money(val)),
+        el("td", "num " + signCls(gain), gain == null ? "—" : money(gain) + " (" + pct(basis ? gain / basis * 100 : null) + ")"),
+        el("td", "num", q.dividendYield != null ? Number(q.dividendYield).toFixed(2) + "%" : "—"),
+        view, act);
+      return tr;
+    }));
+    const t = $("totals"); t.replaceChildren();
+    if (priced) {
+      const gain = value - cost;
+      const tile = (label, v, cls) => { const d = el("div", "total"); d.append(el("span", "eyebrow", label), el("b", cls || "", v)); return d; };
+      t.append(tile("Market value", money(value)),
+        tile("Total gain", cost ? money(gain) + " · " + pct(gain / cost * 100) : "—", signCls(gain)),
+        tile("Day change", money(dayChg), signCls(dayChg)),
+        tile("Positions", String(holdings.length)));
+      t.hidden = false;
+    } else t.hidden = true;
+  }
+
+  function renderNews() {
+    const b = current(), ul = $("news");
+    const items = (b && b.news) || [];
+    if (!items.length) return;
+    ul.replaceChildren(...items.map(n => {
+      const li = el("li"); const d = el("div");
+      const h = el("h3");
+      if (n.url && /^https?:\/\//.test(n.url)) { const a = el("a", null, n.title); a.href = n.url; a.target = "_blank"; a.rel = "noopener"; h.append(a); } else h.textContent = n.title;
+      d.append(h, el("p", null, n.summary || ""));
+      const tags = el("div", "tags");
+      (n.tickers || []).forEach(x => tags.append(el("span", "t", x)));
+      if (n.source) tags.append(el("span", "muted", n.source));
+      d.append(tags);
+      li.append(el("span", "dot " + (n.impact || "")), d);
+      return li;
+    }));
+  }
+
+  function renderAll() { renderHeader(); renderPicker(); renderRecs(); renderHoldings(); renderNews(); }
+
+  function setMsg(text, err) { const m = $("formMsg"); m.textContent = text; m.className = "msg" + (err ? " err" : ""); }
+
+  async function removeHolding(ticker) {
+    pendingDelete = null;
+    try { await db.collection("holdings").doc(ticker).delete(); setMsg(ticker + " removed."); }
+    catch (e) { setMsg("Could not remove " + ticker + ": " + (e && e.message || "try again."), true); renderHoldings(); }
+  }
+
+  $("briefPick").addEventListener("change", (e) => { selectedId = e.target.value; renderHeader(); renderRecs(); renderNews(); });
+
+  $("addForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!db) { setMsg("Holdings can't be saved in this view. Open the page in claude.ai while signed in.", true); return; }
+    const ticker = $("fTicker").value.trim().toUpperCase().replace(/[^A-Z0-9.\-]/g, "");
+    const shares = parseFloat($("fShares").value);
+    const costRaw = $("fCost").value.trim();
+    const avgCost = costRaw === "" ? null : parseFloat(costRaw);
+    if (!ticker) { setMsg("Enter a ticker symbol, like MSFT.", true); return; }
+    if (!(shares > 0)) { setMsg("Enter how many shares you own (more than 0).", true); return; }
+    $("fSave").disabled = true;
+    try {
+      await db.collection("holdings").doc(ticker).set({ ticker, shares, avgCost, updatedAt: new Date().toISOString() });
+      setMsg(ticker + " saved."); $("addForm").reset();
+    } catch (err) {
+      setMsg(err && err.code === "invalid_argument" ? "You don't have permission to change holdings on this page." : "Could not save " + ticker + ". Try again.", true);
+    } finally { $("fSave").disabled = false; }
+  });
+
+  (async () => {
+    db = window.claude && window.claude.use ? await window.claude.use("db") : null;
+    if (!db) { $("fSave").disabled = true; setMsg("Open this page in claude.ai while signed in to see your brief and holdings.", true); return; }
+    db.collection("briefs").orderBy("date", "desc").limit(30).onSnapshot((snap) => {
+      briefs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (selectedId && !briefs.some(b => b.id === selectedId)) selectedId = null;
+      renderAll();
+    }, () => setMsg("Lost the connection to your briefs. Reload the page.", true));
+    db.collection("holdings").onSnapshot((snap) => {
+      holdings = snap.docs.map(d => d.data()).filter(h => h && h.ticker).sort((a, b) => a.ticker.localeCompare(b.ticker));
+      renderHoldings();
+    }, () => setMsg("Lost the connection to your holdings. Reload the page.", true));
+  })();
+})();
+</script>
