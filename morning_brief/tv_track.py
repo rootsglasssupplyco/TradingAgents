@@ -1,9 +1,10 @@
 """Daily price snapshot for tracked picks, from TradingView's scanner.
 
   python3 tv_track.py EXE VMI WCC ...   (SPY is always added as the benchmark)
-  python3 tv_track.py validate <brief.json> [--spent N]
-      Checks a brief before it is written: required keys, fires 1-5, every BUY/ADD has an
-      exitPlan and an exitLevel or a stated reason, buys fit the month's remaining budget.
+  python3 tv_track.py session
+      Today's session facts: {date, prevSession, intraday, holiday, earlyClose}.
+  python3 tv_track.py validate <brief.json> <lessons.json> [--sgov VALUE] [--portfolio VALUE]
+      Checks a brief before it is written against the rules and the ledger from `lessons`.
   python3 tv_track.py lessons <picks_dir> <prices_dir>
       Reads picks/prices JSON files (as saved by ArtifactData with out_dir) and prints
       each pick's return, return vs SPY, sessions held, and which reflection milestone
@@ -34,6 +35,8 @@ HOLIDAYS = {
     "2027-01-01", "2027-01-18", "2027-02-15", "2027-03-26", "2027-05-31", "2027-06-18", "2027-07-05",
     "2027-09-06", "2027-11-25", "2027-12-24",
 }
+EARLY_CLOSE = {"2026-11-27", "2026-12-24", "2027-07-02", "2027-11-26"}  # 1:00 PM ET close
+HOLIDAYS_THROUGH = 2027
 
 
 def is_trading_day(day):
@@ -50,7 +53,10 @@ def prev_trading_day(day):
 def session(now):
     """The trading session the scanner's numbers belong to (weekends, holidays, pre-open roll back)."""
     today = now.date()
-    open_now = is_trading_day(today) and dt.time(9, 30) <= now.time() < dt.time(16, 0)
+    if today.year > HOLIDAYS_THROUGH:
+        raise RuntimeError(f"HOLIDAYS list ends in {HOLIDAYS_THROUGH}; add {today.year}'s NYSE holidays to tv_track.py")
+    close_t = dt.time(13, 0) if today.isoformat() in EARLY_CLOSE else dt.time(16, 0)
+    open_now = is_trading_day(today) and dt.time(9, 30) <= now.time() < close_t
     day = today if is_trading_day(today) and now.time() >= dt.time(9, 30) else prev_trading_day(today)
     return day.isoformat(), prev_trading_day(day).isoformat(), open_now, not is_trading_day(today)
 
@@ -124,50 +130,82 @@ def at_or_before(series, date):
 
 
 HORIZONS = (20, 60, 120, 250)
+BASE_AMOUNT = {5: 500, 4: 350, 3: 200, 2: 100, 1: 50}
+
+
+def add_trading_days(day_iso, n):
+    d = dt.date.fromisoformat(day_iso)
+    while n > 0:
+        d += dt.timedelta(days=1)
+        if is_trading_day(d):
+            n -= 1
+    return d.isoformat()
+
+
+def exit_level_on(pk, date):
+    """Exit level in force on `date`; exitHistory [{from, level}] records raises over time."""
+    hist = sorted(pk.get("exitHistory") or [], key=lambda h: h["from"])
+    level = pk.get("exitLevel") if not hist else None
+    for h in hist:
+        if h["from"] <= date:
+            level = h["level"]
+    return level
+
+
+def today_et():
+    return dt.datetime.now(ZoneInfo("America/New_York")).date()
 
 
 def lessons(picks_dir, prices_dir):
     picks, prices = load_dir(picks_dir), load_dir(prices_dir)
     spy = closes(prices, "SPY")
+    latest = max((d["date"] for d in prices.values()), default=None)
     rows = []
     for pid, pk in sorted(picks.items()):
-        cs = [c for c in closes(prices, pk["ticker"]) if c[0] >= pk["recSession"]]
-        if pk.get("status") == "closed" and pk.get("closeDate"):
+        if pk.get("status") not in ("open", "closed"):
+            continue  # withdrawn or other non-live calls are not scored
+        year_end = (dt.date.fromisoformat(pk["recDate"]) + dt.timedelta(days=365)).isoformat()
+        closed = pk.get("status") == "closed" and pk.get("closeDate")
+        cs = [c for c in closes(prices, pk["ticker"]) if pk["recSession"] <= c[0] <= year_end]
+        if closed:
             cs = [c for c in cs if c[0] <= pk["closeDate"]]
         if not cs or not pk.get("recPrice"):
             rows.append({"id": pid, "ticker": pk["ticker"], "sessions": 0})
             continue
-        last = pk["closePrice"] if pk.get("status") == "closed" and pk.get("closePrice") else cs[-1][1]
-        end = cs[-1][0]
+        last = pk["closePrice"] if closed and pk.get("closePrice") else cs[-1][1]
         ret = (last / pk["recPrice"] - 1) * 100
-        spy_end = at_or_before(spy, end)
+        spy_end = at_or_before(spy, cs[-1][0])
         spy_ret = (spy_end / pk["spyAtRec"] - 1) * 100 if spy_end and pk.get("spyAtRec") else None
-        sessions = len(cs) - 1
         horizon = {}
         for h in HORIZONS:
-            if sessions >= h:
-                d, c = cs[h][0], cs[h][1]
-                s = at_or_before(spy, d)
-                horizon[h] = round((c / pk["recPrice"] - 1) * 100 - ((s / pk["spyAtRec"] - 1) * 100 if s else 0), 2)
+            target = add_trading_days(pk["recSession"], h)
+            if target > year_end or not latest or target > latest:
+                continue  # horizon not reached yet
+            if closed and pk["closeDate"] <= target and pk.get("closePrice"):
+                px = pk["closePrice"]  # sold: hold the cash flat to the horizon
+            else:
+                px = at_or_before(cs, target)
+            s = at_or_before(spy, target)
+            if px and s and pk.get("spyAtRec"):
+                horizon[h] = round((px / pk["recPrice"] - 1) * 100 - (s / pk["spyAtRec"] - 1) * 100, 2)
         finals = [c for c in cs[1:] if c[2]]
-        exit_hit = pk.get("exitLevel") is not None and any(c[1] < pk["exitLevel"] for c in finals)
-        exit_ret = None
-        if exit_hit:
-            first = next(c for c in finals if c[1] < pk["exitLevel"])
-            exit_ret = round((first[1] / pk["recPrice"] - 1) * 100, 2)
+        first_exit = next((c for c in finals if (lvl := exit_level_on(pk, c[0])) is not None and c[1] < lvl), None)
         done = {r.get("milestone") for r in pk.get("reflections") or []}
-        due = [m for m in (5,) + HORIZONS if sessions >= m and m not in done]
-        if exit_hit and "exit" not in done:
+        sessions = sum(1 for c in cs[1:])
+        due = [m for m in (5,) + HORIZONS if m in horizon or (m == 5 and sessions >= 5) if m not in done]
+        if first_exit and "exit" not in done:
             due.append("exit")
         rows.append({
             "id": pid, "ticker": pk["ticker"], "heat": pk.get("heat"), "setup": pk.get("setup"),
             "status": pk.get("status"), "bought": pk.get("bought"), "recDate": pk.get("recDate"),
+            "amount": pk.get("amount"), "fromReserve": pk.get("fromReserve") or 0,
             "sessions": sessions, "returnPct": round(ret, 2),
             "vsSpyPts": round(ret - spy_ret, 2) if spy_ret is not None else None,
             "vsSpyAtHorizon": horizon,
             "peakPct": round((max(c[1] for c in cs) / pk["recPrice"] - 1) * 100, 2),
             "troughPct": round((min(c[1] for c in cs) / pk["recPrice"] - 1) * 100, 2),
-            "exitHit": exit_hit, "returnIfExitFollowedPct": exit_ret,
+            "exitHit": bool(first_exit),
+            "returnIfExitFollowedPct": round((first_exit[1] / pk["recPrice"] - 1) * 100, 2) if first_exit else None,
             "reflectionDue": due[-1] if due else None,
             "pastReflections": [r.get("note") for r in (pk.get("reflections") or [])][-2:],
         })
@@ -181,56 +219,98 @@ def lessons(picks_dir, prices_dir):
         if groups:
             summary[f"{h} sessions"] = {k: {"calls": len(v), "avgVsSpyPts": round(sum(v) / len(v), 2),
                                             "beatRate": round(sum(x > 0 for x in v) / len(v), 2)} for k, v in sorted(groups.items())}
+    today = today_et()
+    month = today.strftime("%Y-%m")
+    week_ago = (today - dt.timedelta(days=7)).isoformat()
+    live = [pk for pk in picks.values() if pk.get("status") in ("open", "closed")]
+    ledger = {
+        "month": month,
+        "spentThisMonth": round(sum((pk.get("amount") or 0) - (pk.get("fromReserve") or 0) for pk in live if pk.get("recDate", "").startswith(month)), 2),
+        "sgovDrawnThisMonth": round(sum(pk.get("fromReserve") or 0 for pk in live if pk.get("recDate", "").startswith(month)), 2),
+        "openMomentum": sum(1 for pk in live if pk.get("status") == "open" and pk.get("setup") == "Early momentum"),
+        "picksLast7Days": sum(1 for pk in live if pk.get("recDate", "") > week_ago),
+        "openTickers": sorted({pk["ticker"] for pk in live if pk.get("status") == "open"}),
+    }
     scored = sum(1 for r in rows if (r.get("vsSpyAtHorizon") or {}).get(20) is not None)
-    return {"picks": rows, "vsSpyByHorizon": summary, "scoredAt20Sessions": scored,
+    return {"ledger": ledger, "picks": rows, "vsSpyByHorizon": summary, "scoredAt20Sessions": scored,
             "enoughToChangeRules": scored >= 30,
-            "note": "Price returns only (dividends excluded). Compare groups only at the same horizon."}
+            "note": "Price returns only (dividends excluded). Horizons count trading days from the call; sold picks hold cash flat. Compare groups only at the same horizon."}
 
 
-REQUIRED = ["date", "generatedAt", "marketSummary", "indices", "portfolio", "monthlyPlan", "recommendations", "quotes", "news", "disclaimer"]
+REQUIRED = ["date", "generatedAt", "marketSummary", "lessons", "indices", "portfolio", "monthlyPlan",
+            "recommendations", "quotes", "news", "disclaimer"]
 
 
-def validate(path, spent=0.0, budget=500.0, reserve=750.0):
-    with open(path) as f:
+def validate(brief_path, lessons_path, sgov=0.0, portfolio=None, budget=500.0, reserve_cap=750.0):
+    with open(brief_path) as f:
         b = json.load(f)
+    with open(lessons_path) as f:
+        ledger = json.load(f)["ledger"]
     errors, warnings = [], []
     for k in REQUIRED:
         if k not in b:
             errors.append(f"missing key: {k}")
-    buys = [r for r in b.get("recommendations", []) if r.get("action") in ("BUY", "ADD")]
-    for r in b.get("recommendations", []):
+    recs = b.get("recommendations", [])
+    buys = [r for r in recs if r.get("action") in ("BUY", "ADD")]
+    for r in recs:
         t = r.get("ticker", "?")
-        if r.get("action") in ("BUY", "ADD"):
-            if not isinstance(r.get("heat"), int) or not 1 <= r["heat"] <= 5:
-                errors.append(f"{t}: BUY/ADD needs heat 1-5")
-            if r.get("setup") not in ("Value", "Early momentum"):
-                errors.append(f"{t}: BUY/ADD setup must be Value or Early momentum")
-            if not r.get("exitPlan"):
-                errors.append(f"{t}: missing exitPlan")
-            if r.get("exitLevel") is None:
-                warnings.append(f"{t}: no numeric exitLevel; say why in exitPlan")
-            if r.get("setup") == "Early momentum" and r.get("exitLevel") is None:
-                errors.append(f"{t}: momentum buys need a numeric exitLevel")
-            if not r.get("amount"):
-                errors.append(f"{t}: missing amount")
-            if not (r.get("debate") or {}).get("bear"):
-                warnings.append(f"{t}: no bear case recorded")
-    total = sum(r.get("amount") or 0 for r in buys)
-    remaining = max(budget - spent, 0)
-    big = any((r.get("heat") or 0) >= 4 for r in buys)
-    if total > remaining + (reserve if big else 0):
-        errors.append(f"buys total ${total:.0f} but only ${remaining:.0f} of this month's ${budget:.0f} is left"
-                      + (f" (+${reserve:.0f} SGOV reserve for 4-5 fire deals)" if big else ""))
-    if len([r for r in buys if r.get("setup") == "Early momentum"]) > 2:
-        errors.append("more than 2 momentum buys")
-    return {"ok": not errors, "errors": errors, "warnings": warnings, "buysTotal": total, "remainingBefore": remaining}
+        if r.get("action") not in ("BUY", "ADD"):
+            continue
+        heat = r.get("heat")
+        if not isinstance(heat, int) or not 1 <= heat <= 5:
+            errors.append(f"{t}: BUY/ADD needs heat 1-5")
+            continue
+        if r.get("setup") not in ("Value", "Early momentum"):
+            errors.append(f"{t}: BUY/ADD setup must be Value or Early momentum")
+        if r.get("setup") == "Early momentum" and heat > 4:
+            errors.append(f"{t}: momentum-only setups cap at 4 fires")
+        if not r.get("exitPlan"):
+            errors.append(f"{t}: missing exitPlan")
+        if r.get("setup") == "Early momentum" and r.get("exitLevel") is None:
+            errors.append(f"{t}: momentum buys need a numeric exitLevel")
+        elif r.get("exitLevel") is None:
+            warnings.append(f"{t}: no numeric exitLevel; say why in exitPlan")
+        amt = r.get("amount") or 0
+        if not amt:
+            errors.append(f"{t}: missing amount")
+        elif amt > BASE_AMOUNT[heat] * 1.25 + (r.get("fromReserve") or 0):
+            errors.append(f"{t}: ${amt:.0f} is above the {heat}-fire band (max ${BASE_AMOUNT[heat] * 1.25:.0f} before reserve)")
+        if portfolio and amt > 0.03 * portfolio:
+            errors.append(f"{t}: ${amt:.0f} is over 3% of the portfolio (${0.03 * portfolio:.0f})")
+        if (r.get("fromReserve") or 0) > 0 and heat < 4:
+            errors.append(f"{t}: only 4-5 fire deals may draw on parked SGOV cash")
+        if not (r.get("debate") or {}).get("bear"):
+            warnings.append(f"{t}: no bear case recorded")
+        if t in ledger.get("openTickers", []):
+            warnings.append(f"{t}: already has an open pick; explain why this is a new, stronger entry")
+    from_budget = sum((r.get("amount") or 0) - (r.get("fromReserve") or 0) for r in buys)
+    from_reserve = sum(r.get("fromReserve") or 0 for r in buys)
+    remaining = max(budget - ledger["spentThisMonth"], 0)
+    reserve_left = max(min(reserve_cap, sgov) - ledger["sgovDrawnThisMonth"], 0)
+    if from_budget > remaining + 0.01:
+        errors.append(f"buys use ${from_budget:.0f} of the monthly budget but only ${remaining:.0f} is left this month")
+    if from_reserve > reserve_left + 0.01:
+        errors.append(f"buys draw ${from_reserve:.0f} from SGOV but only ${reserve_left:.0f} is available this month")
+    new_mom = sum(1 for r in buys if r.get("setup") == "Early momentum" and r.get("ticker") not in ledger.get("openTickers", []))
+    if ledger["openMomentum"] + new_mom > 2:
+        errors.append(f"would make {ledger['openMomentum'] + new_mom} open momentum picks (max 2)")
+    if ledger["picksLast7Days"] + len(buys) > 2:
+        errors.append(f"would make {ledger['picksLast7Days'] + len(buys)} new picks in 7 days (max 2)")
+    return {"ok": not errors, "errors": errors, "warnings": warnings, "fromBudget": from_budget,
+            "fromReserve": from_reserve, "budgetLeftBefore": remaining, "reserveLeftBefore": reserve_left}
 
 
 if __name__ == "__main__":
     try:
+        arg = lambda name, default=None: float(sys.argv[sys.argv.index(name) + 1]) if name in sys.argv else default
+        if len(sys.argv) > 1 and sys.argv[1] == "session":
+            now = dt.datetime.now(ZoneInfo("America/New_York"))
+            date, prev, intraday, holiday = session(now)
+            print(json.dumps({"date": date, "prevSession": prev, "intraday": intraday, "holiday": holiday,
+                              "earlyClose": now.date().isoformat() in EARLY_CLOSE}))
+            sys.exit(0)
         if len(sys.argv) > 1 and sys.argv[1] == "validate":
-            spent = float(sys.argv[sys.argv.index("--spent") + 1]) if "--spent" in sys.argv else 0.0
-            print(json.dumps(validate(sys.argv[2], spent), indent=1))
+            print(json.dumps(validate(sys.argv[2], sys.argv[3], arg("--sgov", 0.0), arg("--portfolio")), indent=1))
             sys.exit(0)
         if len(sys.argv) > 1 and sys.argv[1] == "lessons":
             print(json.dumps(lessons(sys.argv[2], sys.argv[3]), indent=1))

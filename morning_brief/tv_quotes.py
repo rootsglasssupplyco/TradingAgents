@@ -10,7 +10,7 @@ import urllib.request
 
 URL = "https://scanner.tradingview.com/america/scan"
 FULL = ["name", "exchange", "description", "close", "change", "dividends_yield_current", "dividends_yield",
-        "Recommend.All", "RSI", "SMA200", "price_52_week_high", "price_52_week_low"]
+        "Recommend.All", "RSI", "SMA50", "SMA200", "price_52_week_high", "price_52_week_low"]
 BASIC = ["name", "exchange", "description", "close", "change"]
 EXCHANGE_RANK = {"NASDAQ": 0, "NYSE": 0, "AMEX": 1, "CBOE": 2, "BATS": 2}
 
@@ -77,6 +77,7 @@ def main(tickers):
             "dividendYield": round(dy, 2) if dy is not None else None,
             "tvRating": rating(d.get("Recommend.All")),
             "rsi": round(d["RSI"], 1) if d.get("RSI") is not None else None,
+            "sma50": d.get("SMA50"),
             "sma200": d.get("SMA200"),
             "high52": d.get("price_52_week_high"),
             "low52": d.get("price_52_week_low"),

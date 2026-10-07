@@ -1,6 +1,7 @@
 """Screen US stocks on TradingView for two buy setups, plus history for current holdings.
 
-  python3 tv_screen.py screen               -> {"value": [...], "momentum": [...], "notes": [...]}
+  python3 tv_screen.py screen [--exclude T1,T2]  -> {"value": [...], "momentum": [...], "notes": [...]}
+      --exclude: tickers to skip (holdings and open picks) so they don't use up the top-10 slots
   python3 tv_screen.py history T=SHARES ...  -> past values of these holdings (1W..1Y ago)
 
 value:    profitable, cash-generating, cheap on NEXT year's earnings (which must not be shrinking),
@@ -35,6 +36,7 @@ BASE = [
     {"left": "net_income_ttm", "operation": "greater", "right": 0},  # must make money
 ]
 NOTES = []
+EXCLUDE = set()
 
 
 def post(body):
@@ -49,14 +51,14 @@ def rows(filters, n=800):
                 "sort": {"sortBy": "market_cap_basic", "sortOrder": "desc"}})
     if res.get("totalCount", 0) > n:
         NOTES.append(f"screen truncated: {res['totalCount']} matches, kept the largest {n}")
-    return [dict(zip(COLS, r["d"])) for r in res.get("data", [])]
+    return [d for d in (dict(zip(COLS, r["d"])) for r in res.get("data", [])) if d["name"] not in EXCLUDE]
 
 
 def r1(v):
     return round(v, 1) if isinstance(v, (int, float)) else None
 
 
-def card(d, setup, score):
+def card(d, setup, score, flags=()):
     close, target = d["close"], d.get("price_target_median")
     ed = d.get("earnings_release_next_date")
     hi, lo = d.get("price_target_high"), d.get("price_target_low")
@@ -70,7 +72,8 @@ def card(d, setup, score):
         "epsTtm": r1(d.get("earnings_per_share_diluted_ttm")),
         "epsNextFy": r1(d.get("earnings_per_share_forecast_next_fy")),
         "revGrowth": r1(d.get("total_revenue_yoy_growth_ttm")),
-        "roic": r1(d.get("return_on_invested_capital")), "fcfPositive": (d.get("free_cash_flow_ttm") or 0) > 0,
+        "roic": "n/a (financial)" if d["sector"] == "Finance" else r1(d.get("return_on_invested_capital")),
+        "fcfPositive": "n/a (financial)" if d["sector"] == "Finance" else (d.get("free_cash_flow_ttm") or 0) > 0,
         "rsi": r1(d.get("RSI")), "perf1M": r1(d.get("Perf.1M")), "perf3M": r1(d.get("Perf.3M")),
         "perf6M": r1(d.get("Perf.6M")), "perfY": r1(d.get("Perf.Y")),
         "sma50": r1(d.get("SMA50")), "sma200": r1(d.get("SMA200")), "high52": d.get("price_52_week_high"),
@@ -78,7 +81,7 @@ def card(d, setup, score):
         "beta": r1(d.get("beta_1_year")),
         "dividendYield": r1(d.get("dividends_yield_current")), "payoutRatio": r1(d.get("dividend_payout_ratio_ttm")),
         "nextEarnings": dt.datetime.fromtimestamp(ed, dt.timezone.utc).date().isoformat() if ed else None,
-        "marketCapB": r1(d["market_cap_basic"] / 1e9), "score": round(score, 2),
+        "marketCapB": r1(d["market_cap_basic"] / 1e9), "score": round(score, 2), "flags": list(flags),
     }
 
 
@@ -95,6 +98,7 @@ def value_screen():
         {"left": "recommendation_mark", "operation": "less", "right": 2},
         {"left": "recommendation_total", "operation": "greater", "right": 7},
         {"left": "free_cash_flow_ttm", "operation": "greater", "right": 0},
+        {"left": "total_revenue_yoy_growth_ttm", "operation": "greater", "right": 0},
         {"left": "close", "operation": "greater", "right": "SMA50"},
     ]):
         close, target = d["close"], d.get("price_target_median")
@@ -108,14 +112,21 @@ def value_screen():
             continue  # earnings expected to shrink: likely peak-cycle "cheap"
         if (d.get("SMA50[1]") or 0) > d["SMA50"] or (d.get("Perf.6M") or 0) < -15:
             continue  # 50-day still falling, or a deep slide: not stabilized yet
-        if (d.get("return_on_invested_capital") or 0) < 8:
+        if d["sector"] != "Finance" and (d.get("return_on_invested_capital") or 0) < 8:
             continue
         if d["sector"] != "Finance" and (d.get("debt_to_equity") is None or d["debt_to_equity"] > 1.5):
             continue
-        growth = min(max((eps_next / eps - 1) * 100, 0), 50)
+        flags = []
+        if abs(eps_next / eps - 1) > 0.5:
+            # Forecast EPS is analysts' adjusted figure; trailing is GAAP. A big gap usually means
+            # one-off items, not real growth -- don't score it, flag it for a manual check.
+            growth = 0
+            flags.append("epsBasisMismatch: check adjusted vs GAAP earnings")
+        else:
+            growth = min(max((eps_next / eps - 1) * 100, 0), 50)
         spread = ((d.get("price_target_high") or target) - (d.get("price_target_low") or target)) / close
         score = min(upside, 0.5) * 2 + growth / 50 + (2 - d["recommendation_mark"]) - min(spread, 1) * 0.5 + dividend_tilt(d)
-        out.append(card(d, "Value", score))
+        out.append(card(d, "Value", score, flags))
     return sorted(out, key=lambda c: -c["score"])[:10]
 
 
@@ -142,7 +153,9 @@ def momentum_screen():
         fresh = 1.12 - sma50 / sma200  # bigger when the 50-day crossed the 200-day recently
         hot_month = max((d.get("Perf.1M") or 0) - 15, 0) / 10  # short-term spikes tend to fade
         score = (d["Perf.6M"] / 10) + fresh * 15 + min(relvol, 2) - hot_month + dividend_tilt(d)
-        out.append(card(d, "Early momentum", score))
+        eps, eps_next = d.get("earnings_per_share_diluted_ttm"), d.get("earnings_per_share_forecast_next_fy")
+        flags = ["epsBasisMismatch: check adjusted vs GAAP earnings"] if eps and eps_next and abs(eps_next / eps - 1) > 0.5 else []
+        out.append(card(d, "Early momentum", score, flags))
     return sorted(out, key=lambda c: -c["score"])[:10]
 
 
@@ -170,6 +183,8 @@ def history(pairs):
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "screen"
     try:
+        if "--exclude" in sys.argv:
+            EXCLUDE.update(t.strip().upper() for t in sys.argv[sys.argv.index("--exclude") + 1].split(",") if t.strip())
         if mode == "history":
             result = history(sys.argv[2:])
         else:

@@ -136,7 +136,7 @@ header { display: grid; gap: 14px; }
 .tv-legend i.dash { border-top-style: dashed; border-top-color: var(--down); }
 tr.pick { cursor: pointer; }
 tr.pick:hover td { background: var(--flat-soft); }
-tr.pick[aria-selected="true"] td { background: var(--accent-soft); }
+tr.pick[aria-current="true"] td { background: var(--accent-soft); }
 .flag { font-family: var(--f-data); font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: var(--down-soft); color: var(--down); white-space: nowrap; }
 .flag.ok { background: var(--flat-soft); color: var(--muted); }
 label.bought { display: inline-flex; gap: 6px; align-items: center; font-size: 0.82rem; cursor: pointer; }
@@ -191,7 +191,11 @@ form.add .chk input { width: auto; }
   table.stack td { border: 0; padding: 2px 0; text-align: left; white-space: normal; min-width: 0; max-width: none; }
   table.stack td[data-label]::before { content: attr(data-label); display: block; font-family: var(--f-data); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
   table.stack td.wide { grid-column: 1 / -1; }
+  table.stack td.minor { display: none; }
+  table.collapsed tr.quiet { display: none; }
+  #showAllHold { display: inline-block; }
 }
+#showAllHold { display: none; margin-top: 10px; }
 .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 10px; padding: 22px; color: var(--muted); }
 footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
 </style>
@@ -215,7 +219,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
 
   <section aria-labelledby="recsH">
     <div class="sec-head">
-      <h2 id="recsH">Today's calls</h2>
+      <h2 id="recsH" tabindex="-1">Today's calls</h2>
       <button type="button" class="back" id="backLatest" hidden>Back to the latest brief</button>
       <span class="eyebrow">Buys only on value or early-uptrend setups</span>
     </div>
@@ -243,13 +247,14 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     <div class="table-box">
       <table class="stack">
         <thead><tr><th>Ticker</th><th>Today's view</th><th>Value</th><th>Day</th><th>Gain</th><th>Price</th><th>Shares</th><th>Avg cost</th><th>Yield</th><th><span class="sr">Actions</span></th></tr></thead>
-        <tbody id="holdRows"><tr><td colspan="10" class="note">No holdings yet. Add your first position below; the next brief will price it and give it a buy, hold or sell view.</td></tr></tbody>
+        <tbody id="holdRows" data-x=""><tr><td colspan="10" class="note">No holdings yet. Add your first position below; the next brief will price it and give it a buy, hold or sell view.</td></tr></tbody>
       </table>
     </div>
+    <button type="button" class="btn ghost" id="showAllHold" aria-controls="holdRows"></button>
     <form class="add" id="addForm" autocomplete="off">
       <label for="fTicker">Ticker<input id="fTicker" required maxlength="10" placeholder="MSFT"></label>
       <label for="fShares">Shares<input id="fShares" type="number" step="any" min="0" required placeholder="10"></label>
-      <label for="fCost">Avg cost ($)<input id="fCost" type="number" step="any" min="0" placeholder="415.20"></label>
+      <label for="fCost"><span id="fCostLbl">Price paid ($)</span><input id="fCost" type="number" step="any" min="0" placeholder="415.20"></label>
       <label class="chk" for="fAddMode"><input type="checkbox" id="fAddMode" checked>New purchase (adds to what I own)</label>
       <button class="btn" id="fSave" type="submit">Save</button>
     </form>
@@ -288,7 +293,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       </table>
     </div>
     <div class="table-box" id="heatBox" style="margin-top:14px" hidden>
-      <table class="heat-table">
+      <table class="heat-table stack">
         <thead><tr><th>Strength</th><th>Calls</th><th>Avg return</th><th>Avg vs S&amp;P</th><th>Beat S&amp;P</th></tr></thead>
         <tbody id="heatRows"></tbody>
       </table>
@@ -326,6 +331,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   let db = null;
   let pendingDelete = null;
   let backfill = null;
+  let showAllHold = false;
   let picks = [], priceDocs = [], pickFilter = "all", chartMode = "price", selectedPick = null;
   let tvChart = null, chartKey = "", chartSeries = [];
   let seriesCache = null;
@@ -507,7 +513,9 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       td.colSpan = 10; tr.append(td); body.append(tr); $("totals").hidden = true; return;
     }
     let value = 0, cost = 0, costedValue = 0, dayChg = 0, priced = 0;
-    body.replaceChildren(...holdings.map(h => {
+    const rank = (t) => ({ SELL: 0, TRIM: 1, BUY: 2, ADD: 2 })[String((quotes[t] || {}).verdict || "").toUpperCase()] ?? 3;
+    const ordered = holdings.slice().sort((a, b) => rank(a.ticker) - rank(b.ticker) || a.ticker.localeCompare(b.ticker));
+    body.replaceChildren(...ordered.map(h => {
       const q = quotes[h.ticker] || {};
       const price = q.price;
       const val = price != null ? price * h.shares : null;
@@ -515,7 +523,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       const gain = val != null && basis != null ? val - basis : null;
       if (val != null) { value += val; priced++; if (q.changePct != null) dayChg += val - val / (1 + q.changePct / 100); }
       if (val != null && basis != null) { cost += basis; costedValue += val; }
-      const tr = el("tr");
+      const tr = el("tr", rank(h.ticker) === 3 ? "quiet" : "");
       const tk = el("td"); tk.append(el("span", "tkr", h.ticker));
       const view = el("td", "note wide");
       if (q.verdict) { const v = String(q.verdict).toUpperCase(); view.append(el("span", "chip " + v, v), document.createTextNode(" " + (q.note || ""))); }
@@ -527,7 +535,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
         const no = el("button", "btn ghost", "Keep"); no.type = "button"; no.onclick = () => { pendingDelete = null; renderHoldings(); };
         wrap.append(yes, no);
       } else {
-        const ed = el("button", "btn ghost", "Edit"); ed.type = "button"; ed.onclick = () => { $("fTicker").value = h.ticker; $("fShares").value = h.shares; $("fCost").value = h.avgCost ?? ""; $("fAddMode").checked = false; $("fShares").focus(); };
+        const ed = el("button", "btn ghost", "Edit"); ed.type = "button"; ed.onclick = () => { $("fTicker").value = h.ticker; $("fShares").value = h.shares; $("fCost").value = h.avgCost ?? ""; $("fAddMode").checked = false; syncCostLabel(); $("fShares").focus(); };
         const rm = el("button", "btn ghost", "Remove"); rm.type = "button"; rm.onclick = () => { pendingDelete = h.ticker; renderHoldings(); };
         wrap.append(ed, rm);
       }
@@ -538,13 +546,18 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
         L(el("td", "num", money(val)), "Value"),
         L(el("td", "num " + signCls(q.changePct), pct(q.changePct)), "Day"),
         L(el("td", "num " + signCls(gain), gain == null ? "—" : money(gain) + " (" + pct(basis ? gain / basis * 100 : null) + ")"), "Gain"),
-        L(el("td", "num", money(price)), "Price"),
-        L(el("td", "num", Number(h.shares).toLocaleString("en-US", { maximumFractionDigits: 4 })), "Shares"),
-        L(el("td", "num", money(h.avgCost)), "Avg cost"),
-        L(el("td", "num", q.dividendYield != null ? Number(q.dividendYield).toFixed(2) + "%" : "—"), "Yield"),
+        L(el("td", "num minor", money(price)), "Price"),
+        L(el("td", "num minor", Number(h.shares).toLocaleString("en-US", { maximumFractionDigits: 4 })), "Shares"),
+        L(el("td", "num minor", money(h.avgCost)), "Avg cost"),
+        L(el("td", "num minor", q.dividendYield != null ? Number(q.dividendYield).toFixed(2) + "%" : "—"), "Yield"),
         act);
       return tr;
     }));
+    const quiet = holdings.filter(h => rank(h.ticker) === 3).length;
+    const tbl = body.closest("table"); tbl.classList.toggle("collapsed", !showAllHold && quiet > 0);
+    const sb = $("showAllHold"); sb.hidden = !quiet;
+    sb.textContent = showAllHold ? "Show only holdings with an action" : "Show all " + holdings.length + " holdings (" + quiet + " are holds)";
+    sb.setAttribute("aria-expanded", String(showAllHold));
     const t = $("totals"); t.replaceChildren();
     if (priced) {
       const gain = costedValue - cost;
@@ -603,22 +616,23 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     const yearEnd = plusDays(pk.recDate, 365);
     const closed = pk.status === "closed";
     let end = closed ? (pk.closeDate || yearEnd) : (cs.length ? cs[cs.length - 1].time : pk.recSession);
-    if (end > yearEnd) end = yearEnd;
-    const last = closed && pk.closePrice != null ? pk.closePrice : closeOn(cs, end);
+    const capped = end > yearEnd; if (capped) end = yearEnd;
+    const last = closed && pk.closePrice != null && !capped ? pk.closePrice : closeOn(cs, end);
     const ret = last != null && pk.recPrice ? (last / pk.recPrice - 1) * 100 : null;
     const spyEnd = closeOn(series("SPY"), end);
     const spyRet = spyEnd != null && pk.spyAtRec ? (spyEnd / pk.spyAtRec - 1) * 100 : null;
-    const exitHit = pk.exitLevel != null && cs.some(c => c.time > pk.recSession && !c.intraday && c.close < pk.exitLevel);
+    const levelOn = (date) => { const h = (pk.exitHistory || []).slice().sort((a, b) => a.from.localeCompare(b.from)); let l = h.length ? null : pk.exitLevel; h.forEach(x => { if (x.from <= date) l = x.level; }); return l; };
+    const exitHit = cs.some(c => c.time > pk.recSession && c.time <= end && !c.intraday && levelOn(c.time) != null && c.close < levelOn(c.time));
     const today = new Date().toISOString().slice(0, 10);
     const status = closed ? (pk.closeReason || "Closed") : exitHit ? "Exit level hit" : today >= yearEnd ? "1 year done" : "Open";
-    return { last, ret, spyRet, vs: ret != null && spyRet != null ? ret - spyRet : null, exitHit, status, days: cs.length };
+    return { last, ret, spyRet, vs: ret != null && spyRet != null ? ret - spyRet : null, exitHit, status, days: cs.length, end };
   }
   function visiblePicks() { return picks.filter(p => pickFilter === "all" || p.bought); }
   const pts = (v) => v == null ? "—" : (v > 0 ? "+" : "") + v.toFixed(2) + " pts";
 
   function selectPick(id) {
     selectedPick = id;
-    document.querySelectorAll("#pickRows tr.pick").forEach(r => r.toggleAttribute("aria-current", r.dataset.id === id));
+    document.querySelectorAll("#pickRows tr.pick").forEach(r => r.dataset.id === id ? r.setAttribute("aria-current", "true") : r.removeAttribute("aria-current"));
     renderPickChart();
   }
 
@@ -631,7 +645,8 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       const tr = el("tr"); const td = el("td", "note", pickFilter === "bought" ? "Nothing marked as bought yet. Tick the box on any call you act on." : "No buy calls yet. Each BUY or ADD from a brief lands here and is tracked daily.");
       td.colSpan = 10; tr.append(td); body.replaceChildren(tr);
     } else {
-      const focusedId = document.activeElement && document.activeElement.closest && document.activeElement.closest("tr.pick") ? document.activeElement.closest("tr.pick").dataset.id : null;
+      const act = document.activeElement, focusedEl = act && act.id && act.closest && act.closest("#pickRows") ? act.id : null;
+      const focusedId = act && act.closest && act.closest("tr.pick") ? act.closest("tr.pick").dataset.id : null;
       body.replaceChildren(...rows.map(({ p, s }) => {
         const tr = el("tr", "pick"); tr.tabIndex = 0; tr.dataset.id = p.id;
         if (selectedPick === p.id) tr.setAttribute("aria-current", "true");
@@ -655,7 +670,8 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
           L(el("td", null, p.setup || ""), "Setup"), st, bt);
         return tr;
       }));
-      if (focusedId) { const r = body.querySelector(`tr.pick[data-id="${CSS.escape(focusedId)}"]`); if (r) r.focus(); }
+      const again = focusedEl && document.getElementById(focusedEl);
+      if (again) again.focus(); else if (focusedId) { const r = body.querySelector(`tr.pick[data-id="${CSS.escape(focusedId)}"]`); if (r) r.focus(); }
     }
     const scored = rows.filter(r => r.s.ret != null);
     const avg = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
@@ -671,8 +687,10 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       const g = scored.filter(r => Math.round(r.p.heat) === h); if (!g.length) continue;
       const tr = el("tr"); const c0 = el("td"); c0.append(heat(h)); const gv = g.filter(r => r.s.vs != null);
       const gr = avg(g.map(r => r.s.ret)), gvs = avg(gv.map(r => r.s.vs));
-      tr.append(c0, el("td", "num", String(g.length)), el("td", "num " + signCls(gr), pct(gr)), el("td", "num " + signCls(gvs), pts(gvs)),
-        el("td", "num", gv.length ? Math.round(gv.filter(r => r.s.vs > 0).length / gv.length * 100) + "%" : "—"));
+      const D = (td, l) => { td.dataset.label = l; return td; };
+      c0.className = "wide";
+      tr.append(c0, D(el("td", "num", String(g.length)), "Calls"), D(el("td", "num " + signCls(gr), pct(gr)), "Avg return"), D(el("td", "num " + signCls(gvs), pts(gvs)), "Avg vs S&P"),
+        D(el("td", "num", gv.length ? Math.round(gv.filter(r => r.s.vs > 0).length / gv.length * 100) + "%" : "—"), "Beat S&P"));
       hb.append(tr);
     }
     $("heatBox").hidden = !hb.children.length;
@@ -689,12 +707,14 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
 
   function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
   function themeKey() { return cssVar("--bg") + "|" + cssVar("--accent"); }
-  function chartData(pk) {
-    const cs = series(pk.ticker).map(({ intraday, ...c }) => c);
+  function chartData(pk, end) {
+    const cs = series(pk.ticker).filter(c => c.time <= end).map(({ intraday, ...c }) => c);
     if (chartMode === "price") return { candles: cs };
-    const mine = cs.filter(c => c.time >= pk.recSession).map(c => ({ time: c.time, value: (c.close / pk.recPrice - 1) * 100 }));
-    const spy = series("SPY").filter(c => c.time >= pk.recSession).map(c => ({ time: c.time, value: (c.close / pk.spyAtRec - 1) * 100 }));
-    return { mine, spy };
+    const since = cs.filter(c => c.time >= pk.recSession);
+    const spyAll = series("SPY").filter(c => c.time >= pk.recSession && c.time <= end);
+    const base = pk.recPrice || (since[0] && since[0].close), spyBase = pk.spyAtRec || (spyAll[0] && spyAll[0].close);
+    if (!base || !spyBase) return { mine: [], spy: [] };
+    return { mine: since.map(c => ({ time: c.time, value: (c.close / base - 1) * 100 })), spy: spyAll.map(c => ({ time: c.time, value: (c.close / spyBase - 1) * 100 })) };
   }
   function renderPickChart() {
     const box = $("tvBox"), pk = picks.find(p => p.id === selectedPick);
@@ -713,9 +733,11 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     $("tvNote").textContent = (pk.thesis ? pk.thesis + " " : "") + (s.days < 5 ? "One candle is added per trading day, so the chart fills in over the coming days." : "");
     const host = $("tvChart");
     if (!window.LightweightCharts) { host.replaceChildren(el("p", "muted", "The chart library didn't load. Reload the page to try again.")); return; }
+    if (chartMode === "vs" && !pk.recPrice && !(series(pk.ticker).length)) { if (tvChart) { tvChart.remove(); tvChart = null; chartKey = ""; } host.replaceChildren(el("p", "muted", "No call price recorded for this pick yet.")); return; }
     const LC = window.LightweightCharts;
-    const key = pk.id + "|" + chartMode + "|" + themeKey();
-    const data = chartData(pk);
+    const data = chartData(pk, s.end);
+    const n = (data.candles || data.mine || []).length;
+    const key = pk.id + "|" + chartMode + "|" + themeKey() + "|" + (n > 0) + "|" + (pk.status || "") + "|" + (pk.exitLevel ?? "");
     if (tvChart && key === chartKey) {
       if (chartMode === "price") chartSeries[0].setData(data.candles); else { chartSeries[0].setData(data.mine); chartSeries[1].setData(data.spy); }
       return;
@@ -737,7 +759,11 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       ser.setData(data.candles);
       if (pk.recPrice) ser.createPriceLine({ price: pk.recPrice, color: accent, lineWidth: 2, lineStyle: LC.LineStyle.Solid, axisLabelVisible: true, title: "Call" });
       if (pk.exitLevel != null) ser.createPriceLine({ price: pk.exitLevel, color: down, lineWidth: 1, lineStyle: LC.LineStyle.Dashed, axisLabelVisible: true, title: "Exit" });
-      if (data.candles.some(c => c.time === pk.recSession)) ser.setMarkers([{ time: pk.recSession, position: "belowBar", color: accent, shape: "arrowUp", text: (pk.action || "BUY") + " " + "\u{1F525}".repeat(pk.heat || 0) }]);
+      const marks = [];
+      if (data.candles.some(c => c.time === pk.recSession)) marks.push({ time: pk.recSession, position: "belowBar", color: accent, shape: "arrowUp", text: (pk.action || "BUY") + " " + "\u{1F525}".repeat(pk.heat || 0) });
+      const endBar = data.candles.length ? data.candles[data.candles.length - 1].time : null;
+      if (pk.status === "closed" && endBar) marks.push({ time: endBar, position: "aboveBar", color: down, shape: "arrowDown", text: "SELL" });
+      if (marks.length) ser.setMarkers(marks);
       chartSeries = [ser];
     } else {
       const a = tvChart.addLineSeries({ color: accent, lineWidth: 2, priceLineVisible: false, title: pk.ticker });
@@ -762,6 +788,9 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   }
 
   $("briefPick").addEventListener("change", (e) => { selectedId = e.target.value; renderHeader(); renderPlan(); renderRecs(); renderNews(); });
+  $("showAllHold").addEventListener("click", () => { showAllHold = !showAllHold; renderHoldings(); });
+  const syncCostLabel = () => { $("fCostLbl").textContent = $("fAddMode").checked ? "Price paid ($)" : "Avg cost ($)"; };
+  $("fAddMode").addEventListener("change", syncCostLabel);
   $("backLatest").addEventListener("click", () => { selectedId = null; renderHeader(); renderPicker(); renderPlan(); renderRecs(); renderNews(); $("recsH").focus && $("recsH").focus(); });
 
   $("addForm").addEventListener("submit", async (e) => {
@@ -772,18 +801,19 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     const costRaw = $("fCost").value.trim();
     const avgCost = costRaw === "" ? null : parseFloat(costRaw);
     if (!ticker) { setMsg("Enter a ticker symbol, like MSFT.", true); return; }
-    if (!(shares > 0)) { setMsg("Enter how many shares you own (more than 0).", true); return; }
+    if (!(shares > 0)) { setMsg("Enter how many shares (more than 0).", true); return; }
+    if ($("fAddMode").checked && holdings.some(h => h.ticker === ticker) && avgCost == null) { setMsg("Enter the price you paid so the average cost stays right.", true); $("fCost").focus(); return; }
     $("fSave").disabled = true;
     try {
       const existing = holdings.find(h => h.ticker === ticker);
       let newShares = shares, newCost = avgCost, msg = ticker + " saved.";
       if ($("fAddMode").checked && existing) {
         newShares = existing.shares + shares;
-        newCost = existing.avgCost != null && avgCost != null ? (existing.avgCost * existing.shares + avgCost * shares) / newShares : (existing.avgCost ?? avgCost);
-        msg = "Added " + shares + " " + ticker + ". You now own " + Number(newShares.toFixed(4)) + (newCost != null ? " at " + money(newCost) + " average." : ".");
+        newCost = existing.avgCost != null ? (existing.avgCost * existing.shares + avgCost * shares) / newShares : null;
+        msg = "Added " + shares + " " + ticker + ". You now own " + Number(newShares.toFixed(4)) + (newCost != null ? " at " + money(newCost) + " average." : ". Your earlier shares have no cost on file, so the average cost is left blank; use Edit to set it.");
       }
       await db.collection("holdings").doc(ticker).set({ ticker, shares: newShares, avgCost: newCost != null ? Math.round(newCost * 10000) / 10000 : null, updatedAt: new Date().toISOString() });
-      setMsg(msg); $("addForm").reset(); $("fAddMode").checked = true;
+      setMsg(msg); $("addForm").reset(); $("fAddMode").checked = true; syncCostLabel();
     } catch (err) {
       setMsg(err && err.code === "invalid_argument" ? "You don't have permission to change holdings on this page." : "Could not save " + ticker + ". Try again.", true);
     } finally { $("fSave").disabled = false; }
