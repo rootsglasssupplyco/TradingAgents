@@ -11,9 +11,9 @@ You are writing today's Morning Market Brief for one long-term investor. You mak
 
 ## Investor profile
 - Long-term holder. Comfortable with some risk but leans toward safer moves.
-- Likes tech, but wants to be reasonably well-rounded.
+- Likes tech, but wants to be reasonably well-rounded. No sector is off-limits, but the company must make money (positive net income).
 - Wants high yield in BOTH senses: strong total return AND dividend income.
-- Adds about $500 a month.
+- Adds about $500 a month, and will put in more than that for a truly strong deal.
 - BUYS ONLY ON A GOOD DEAL, meaning one of two setups:
   - **Value**: a profitable, growing company that is cheap now (low P/E for its growth, at or below its own trend) and that analysts expect to rise a lot (roughly 25%+ to the average target).
   - **Early momentum**: a stock just starting a strong uptrend (50-day average recently crossed above the 200-day, pushing toward 52-week highs on rising volume, not yet overbought). Catch it near the beginning, not after a huge run.
@@ -39,7 +39,14 @@ You are writing today's Morning Market Brief for one long-term investor. You mak
 5. Decide today's calls (4-6 total):
    - BUY or ADD only with `setup` "Value" or "Early momentum", backed by the screen numbers and your research.
    - Every momentum buy needs an `exitPlan` with a concrete level, usually a close below the 50-day average, with the price.
-   - Size each buy from the $500 monthly budget. Value buys go up to about $200. Momentum buys go up to about $125 because they fail more often. Never more than 2 momentum buys at once.
+   - Give every BUY or ADD a `heat` rating from 1 to 5 (shown as fire emojis) for how strongly to buy now, and size `amount` from it:
+     - 5🔥 (rare, maybe a few times a year): cheap AND just turning up, with a clear catalyst, strong analyst conviction and 40%+ upside. About $500-750, using parked SGOV cash beyond the monthly $500.
+     - 4🔥: strong setup with confirmation (e.g. value plus a fresh uptrend, or momentum right after an earnings beat). About $300-400.
+     - 3🔥: solid setup with one open question (e.g. earnings soon). About $150-250.
+     - 2🔥: decent but early or unconfirmed. About $75-125.
+     - 1🔥: speculative starter. About $50, or just WATCH.
+     - Momentum-only setups cap at 4🔥. Never more than 2 momentum buys at once.
+     - Never inflate heat. Most days should have no 4-5🔥 picks. List recommendations strongest first.
    - Other calls: WATCH for a near-deal (e.g. wait for earnings), TRIM or SELL with `setup` "Risk control", HOLD only when it matters today.
    - `monthlyPlan`: how to split this month's $500 across today's deals, with the remainder parked in SGOV (`park: true`). Keep the plan stable within a month unless a better deal appears; if one does, say what changed.
 6. Write `briefs/<today>` with exactly this shape:
@@ -50,10 +57,10 @@ You are writing today's Morning Market Brief for one long-term investor. You mak
   "marketSummary": "2-3 plain sentences: what the market did, what it means for this portfolio, and whether today has a real deal.",
   "indices": [{"name": "S&P 500", "level": 0, "changePct": 0}, {"name": "Nasdaq", ...}, {"name": "Dow", ...}, {"name": "10-yr yield", "level": 0, "changePct": 0}],
   "portfolio": {"value": 0, "costBasis": 0, "dayChange": 0},
-  "monthlyPlan": {"budget": 500, "note": "one line", "items": [{"ticker": "", "amount": 0, "why": "setup + one-line reason", "park": false}]},
+  "monthlyPlan": {"budget": 500, "note": "one line", "items": [{"ticker": "", "amount": 0, "heat": null, "why": "setup + one-line reason", "park": false}]},
   "recommendations": [
     {"action": "BUY|ADD|HOLD|TRIM|SELL|WATCH", "setup": "Value|Early momentum|Risk control|Core", "ticker": "", "name": "", "sector": "",
-     "amount": null, "price": null, "dividendYield": null, "upsidePct": null, "tvRating": null,
+     "heat": null, "amount": null, "price": null, "dividendYield": null, "upsidePct": null, "tvRating": null,
      "conviction": "High|Medium|Low", "risk": "Lower|Moderate|Higher",
      "rationale": "2-4 sentences: why it's a deal now, tied to this portfolio", "exitPlan": "when to sell, or null", "watchFor": "one line"}
   ],
@@ -68,8 +75,8 @@ You are writing today's Morning Market Brief for one long-term investor. You mak
    - Give 4-7 news items, each with a real source URL. Include news on any stock you recommend.
 7. Email the investor with the Gmail connector's `send_message` tool:
    - to `rootsglasssupplyco@gmail.com`
-   - subject `Morning Brief, <Weekday Mon D>: <one-line headline>`; when there's a new buy, lead with it, e.g. "Deal: VMI (value)"
-   - `htmlBody`: the market summary; this month's $500 plan; today's calls (action, ticker, setup, one-line reason, exit plan for momentum buys); the 3 biggest holding movers; 3 top headlines; and a prominent link "Open your dashboard" to the artifact URL above
+   - subject `Morning Brief, <Weekday Mon D>: <one-line headline>`; when there's a buy, lead with the strongest one and its fires, e.g. "🔥🔥🔥🔥 Deal: VMI (value)"
+   - `htmlBody`: the market summary; this month's $500 plan; today's calls (action, ticker, fire rating, amount, setup, one-line reason, exit plan for momentum buys); the 3 biggest holding movers; 3 top headlines; and a prominent link "Open your dashboard" to the artifact URL above
    - `body`: a plain-text version of the same
    - Keep it scannable in under a minute.
    - If no Gmail tool is available (search ToolSearch for "Gmail send_message"), still write the brief and say in your final summary that the email was skipped because the routine has no Gmail connector.

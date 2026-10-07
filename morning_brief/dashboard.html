@@ -83,6 +83,8 @@ header { display: grid; gap: 14px; }
 .facts { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.82rem; }
 .facts span { white-space: nowrap; }
 .rec p { margin: 0; }
+.heat { font-size: 0.95rem; letter-spacing: 1px; white-space: nowrap; }
+.heat .off { filter: grayscale(1); opacity: 0.25; }
 .setup { font-family: var(--f-data); font-size: 0.72rem; color: var(--accent); background: var(--accent-soft); padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
 .amount { font-family: var(--f-data); font-weight: 500; }
 .rec .exit { font-size: 0.85rem; }
@@ -223,6 +225,12 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   const pct = (v) => (v == null || isNaN(v)) ? "—" : (v > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
   const money = (v) => (v == null || isNaN(v)) ? "—" : usd.format(v);
   const signCls = (v) => v > 0 ? "up" : v < 0 ? "down" : "";
+  const heat = (n) => {
+    n = Math.max(0, Math.min(5, Math.round(Number(n) || 0)));
+    const s = document.createElement("span"); s.className = "heat"; s.setAttribute("role", "img"); s.setAttribute("aria-label", "Buy strength " + n + " of 5");
+    for (let i = 1; i <= 5; i++) { const f = document.createElement("span"); f.textContent = "\u{1F525}"; if (i > n) f.className = "off"; f.setAttribute("aria-hidden", "true"); s.append(f); }
+    return s;
+  };
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 
   let briefs = [];        // newest first
@@ -281,6 +289,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       const action = String(r.action || "HOLD").toUpperCase();
       top.append(el("span", "chip " + action, action), el("span", "tkr", r.ticker), el("span", "rec-name", r.name || ""));
       if (r.setup) top.append(el("span", "setup", r.setup));
+      if (r.heat) top.append(heat(r.heat));
       const facts = el("div", "facts");
       if (r.amount) facts.append(el("span", "amount", "Put in " + money(r.amount)));
       if (r.price != null) facts.append(el("span", "num", money(r.price)));
@@ -309,6 +318,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
     mp.items.forEach(i => {
       const seg = el("span", i.park ? "park" : ""); seg.style.flex = String(i.amount || 0); seg.title = i.ticker + " " + money(i.amount); bar.append(seg);
       const li = el("li"); const t = el("div"); t.append(el("b", null, i.ticker + " · " + money(i.amount)));
+      if (i.heat) { t.append(document.createTextNode(" ")); t.append(heat(i.heat)); }
       li.append(t, el("span", "muted", i.why || "")); list.append(li);
     });
     box.replaceChildren(head, bar, list); box.hidden = false;

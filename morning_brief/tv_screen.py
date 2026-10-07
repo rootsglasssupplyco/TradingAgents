@@ -4,7 +4,7 @@
   python3 tv_screen.py history T=SHARES ... -> past values of these holdings (1W..1Y ago)
 
 value:    profitable, growing, analysts see 25%+ upside, priced at or below its own trend
-momentum: early uptrend (50-day just crossed above 200-day), breaking toward 52-week highs
+momentum: profitable company in an early uptrend (50-day just crossed above 200-day), breaking toward 52-week highs
           on rising volume, not yet overbought
 Results are candidates for research, not buy signals. Standard library only.
 """
@@ -89,6 +89,7 @@ def momentum_screen():
         {"left": "RSI", "operation": "in_range", "right": [55, 70]},
         {"left": "Perf.1M", "operation": "greater", "right": 5},
         {"left": "total_revenue_yoy_growth_ttm", "operation": "greater", "right": 10},
+        {"left": "net_income", "operation": "greater", "right": 0},  # must make money
     ]):
         sma50, sma200, high = d["SMA50"], d["SMA200"], d.get("price_52_week_high")
         perf3m, relvol = d.get("Perf.3M") or 0, d.get("relative_volume_10d_calc") or 0
