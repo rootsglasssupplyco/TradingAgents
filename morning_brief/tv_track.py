@@ -3,7 +3,7 @@
   python3 tv_track.py EXE VMI WCC ...   (SPY is always added as the benchmark)
   python3 tv_track.py session
       Today's session facts: {date, prevSession, intraday, holiday, earlyClose}.
-  python3 tv_track.py validate <brief.json> <lessons.json> [--sgov VALUE] [--portfolio VALUE]
+  python3 tv_track.py validate <brief.json> <lessons.json> [--portfolio VALUE]
       Checks a brief before it is written against the rules and the ledger from `lessons`.
   python3 tv_track.py lessons <picks_dir> <prices_dir>
       Reads picks/prices JSON files (as saved by ArtifactData with out_dir) and prints
@@ -198,7 +198,7 @@ def lessons(picks_dir, prices_dir):
         rows.append({
             "id": pid, "ticker": pk["ticker"], "heat": pk.get("heat"), "setup": pk.get("setup"),
             "status": pk.get("status"), "bought": pk.get("bought"), "recDate": pk.get("recDate"),
-            "amount": pk.get("amount"), "fromReserve": pk.get("fromReserve") or 0,
+            "amount": pk.get("amount"), "overBudget": pk.get("overBudget") or 0,
             "sessions": sessions, "returnPct": round(ret, 2),
             "vsSpyPts": round(ret - spy_ret, 2) if spy_ret is not None else None,
             "vsSpyAtHorizon": horizon,
@@ -220,13 +220,14 @@ def lessons(picks_dir, prices_dir):
             summary[f"{h} sessions"] = {k: {"calls": len(v), "avgVsSpyPts": round(sum(v) / len(v), 2),
                                             "beatRate": round(sum(x > 0 for x in v) / len(v), 2)} for k, v in sorted(groups.items())}
     today = today_et()
-    month = today.strftime("%Y-%m")
+    week_start = (today - dt.timedelta(days=today.weekday())).isoformat()  # Monday
     week_ago = (today - dt.timedelta(days=7)).isoformat()
     live = [pk for pk in picks.values() if pk.get("status") in ("open", "closed")]
+    this_week = [pk for pk in live if pk.get("recDate", "") >= week_start]
     ledger = {
-        "month": month,
-        "spentThisMonth": round(sum((pk.get("amount") or 0) - (pk.get("fromReserve") or 0) for pk in live if pk.get("recDate", "").startswith(month)), 2),
-        "sgovDrawnThisMonth": round(sum(pk.get("fromReserve") or 0 for pk in live if pk.get("recDate", "").startswith(month)), 2),
+        "weekOf": week_start,
+        "stockSpentThisWeek": round(sum(pk.get("amount") or 0 for pk in this_week), 2),
+        "overBudgetThisWeek": round(sum(pk.get("overBudget") or 0 for pk in this_week), 2),
         "openMomentum": sum(1 for pk in live if pk.get("status") == "open" and pk.get("setup") == "Early momentum"),
         "picksLast7Days": sum(1 for pk in live if pk.get("recDate", "") > week_ago),
         "openTickers": sorted({pk["ticker"] for pk in live if pk.get("status") == "open"}),
@@ -237,11 +238,13 @@ def lessons(picks_dir, prices_dir):
             "note": "Price returns only (dividends excluded). Horizons count trading days from the call; sold picks hold cash flat. Compare groups only at the same horizon."}
 
 
-REQUIRED = ["date", "generatedAt", "marketSummary", "lessons", "indices", "portfolio", "monthlyPlan",
+REQUIRED = ["date", "generatedAt", "marketSummary", "lessons", "indices", "portfolio", "weeklyPlan",
             "recommendations", "quotes", "news", "disclaimer"]
+WEEKLY_BUDGET, INDEX_MIN, STOCK_ALLOWANCE = 500.0, 300.0, 200.0
+HOT_MAX = {4: 400.0, 5: 600.0}  # a 4-5 fire deal may go over the weekly $500, up to this much
 
 
-def validate(brief_path, lessons_path, sgov=0.0, portfolio=None, budget=500.0, reserve_cap=750.0):
+def validate(brief_path, lessons_path, portfolio=None):
     with open(brief_path) as f:
         b = json.load(f)
     with open(lessons_path) as f:
@@ -261,7 +264,7 @@ def validate(brief_path, lessons_path, sgov=0.0, portfolio=None, budget=500.0, r
             errors.append(f"{t}: BUY/ADD needs heat 1-5")
             continue
         if r.get("setup") not in ("Value", "Early momentum"):
-            errors.append(f"{t}: BUY/ADD setup must be Value or Early momentum")
+            errors.append(f"{t}: BUY/ADD setup must be Value or Early momentum (funds go in weeklyPlan)")
         if r.get("setup") == "Early momentum" and heat > 4:
             errors.append(f"{t}: momentum-only setups cap at 4 fires")
         if not r.get("exitPlan"):
@@ -271,33 +274,38 @@ def validate(brief_path, lessons_path, sgov=0.0, portfolio=None, budget=500.0, r
         elif r.get("exitLevel") is None:
             warnings.append(f"{t}: no numeric exitLevel; say why in exitPlan")
         amt = r.get("amount") or 0
+        cap = HOT_MAX.get(heat, BASE_AMOUNT[heat] * 1.25)
         if not amt:
             errors.append(f"{t}: missing amount")
-        elif amt > BASE_AMOUNT[heat] * 1.25 + (r.get("fromReserve") or 0):
-            errors.append(f"{t}: ${amt:.0f} is above the {heat}-fire band (max ${BASE_AMOUNT[heat] * 1.25:.0f} before reserve)")
+        elif amt > cap:
+            errors.append(f"{t}: ${amt:.0f} is above the {heat}-fire limit (${cap:.0f})")
         if portfolio and amt > 0.03 * portfolio:
             errors.append(f"{t}: ${amt:.0f} is over 3% of the portfolio (${0.03 * portfolio:.0f})")
-        if (r.get("fromReserve") or 0) > 0 and heat < 4:
-            errors.append(f"{t}: only 4-5 fire deals may draw on parked SGOV cash")
+        if (r.get("overBudget") or 0) > 0 and heat < 4:
+            errors.append(f"{t}: only 4-5 fire deals may go over the weekly budget")
         if not (r.get("debate") or {}).get("bear"):
             warnings.append(f"{t}: no bear case recorded")
         if t in ledger.get("openTickers", []):
             warnings.append(f"{t}: already has an open pick; explain why this is a new, stronger entry")
-    from_budget = sum((r.get("amount") or 0) - (r.get("fromReserve") or 0) for r in buys)
-    from_reserve = sum(r.get("fromReserve") or 0 for r in buys)
-    remaining = max(budget - ledger["spentThisMonth"], 0)
-    reserve_left = max(min(reserve_cap, sgov) - ledger["sgovDrawnThisMonth"], 0)
-    if from_budget > remaining + 0.01:
-        errors.append(f"buys use ${from_budget:.0f} of the monthly budget but only ${remaining:.0f} is left this month")
-    if from_reserve > reserve_left + 0.01:
-        errors.append(f"buys draw ${from_reserve:.0f} from SGOV but only ${reserve_left:.0f} is available this month")
+    allowance_left = max(STOCK_ALLOWANCE - ledger["stockSpentThisWeek"] + ledger.get("overBudgetThisWeek", 0), 0)
+    regular = sum((r.get("amount") or 0) - (r.get("overBudget") or 0) for r in buys)
+    if regular > allowance_left + 0.01:
+        errors.append(f"stock buys use ${regular:.0f} of this week's ${STOCK_ALLOWANCE:.0f} stock allowance but only "
+                      f"${allowance_left:.0f} is left; mark the extra as overBudget (4-5 fire only) or shrink it")
+    wp = b.get("weeklyPlan") or {}
+    index_total = sum(i.get("amount") or 0 for i in wp.get("items", []) if i.get("kind") == "index")
+    if wp and index_total + 0.01 < INDEX_MIN:
+        errors.append(f"weeklyPlan puts ${index_total:.0f} in index funds; the minimum is ${INDEX_MIN:.0f}")
+    over = sum(r.get("overBudget") or 0 for r in buys)
+    if over and not wp.get("overBudget"):
+        warnings.append(f"weeklyPlan.overBudget should show the ${over:.0f} extra so the investor sees it")
     new_mom = sum(1 for r in buys if r.get("setup") == "Early momentum" and r.get("ticker") not in ledger.get("openTickers", []))
     if ledger["openMomentum"] + new_mom > 2:
         errors.append(f"would make {ledger['openMomentum'] + new_mom} open momentum picks (max 2)")
     if ledger["picksLast7Days"] + len(buys) > 2:
         errors.append(f"would make {ledger['picksLast7Days'] + len(buys)} new picks in 7 days (max 2)")
-    return {"ok": not errors, "errors": errors, "warnings": warnings, "fromBudget": from_budget,
-            "fromReserve": from_reserve, "budgetLeftBefore": remaining, "reserveLeftBefore": reserve_left}
+    return {"ok": not errors, "errors": errors, "warnings": warnings, "stockAllowanceLeft": allowance_left,
+            "stockRegular": regular, "overBudget": over, "indexTotal": index_total}
 
 
 if __name__ == "__main__":
@@ -310,7 +318,7 @@ if __name__ == "__main__":
                               "earlyClose": now.date().isoformat() in EARLY_CLOSE}))
             sys.exit(0)
         if len(sys.argv) > 1 and sys.argv[1] == "validate":
-            print(json.dumps(validate(sys.argv[2], sys.argv[3], arg("--sgov", 0.0), arg("--portfolio")), indent=1))
+            print(json.dumps(validate(sys.argv[2], sys.argv[3], arg("--portfolio")), indent=1))
             sys.exit(0)
         if len(sys.argv) > 1 and sys.argv[1] == "lessons":
             print(json.dumps(lessons(sys.argv[2], sys.argv[3]), indent=1))

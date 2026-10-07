@@ -94,6 +94,12 @@ header { display: grid; gap: 14px; }
 .plan-bar { display: flex; height: 10px; gap: 2px; border-radius: 5px; overflow: hidden; background: var(--flat-soft); }
 .plan-bar span { background: var(--accent); min-width: 2px; }
 .plan-bar span.park { background: var(--muted); opacity: 0.45; }
+.plan-bar span.idx-seg { background: var(--up); }
+.kind { font-family: var(--f-data); font-size: 0.68rem; padding: 1px 6px; border-radius: 3px; background: var(--accent-soft); color: var(--accent); }
+.kind.index { background: var(--up-soft); color: var(--up); }
+.plan p { margin: 0; font-size: 0.88rem; }
+.over { background: var(--warn-soft); color: var(--ink); border-radius: 6px; padding: 8px 10px; font-weight: 500; }
+.rec .over { font-size: 0.85rem; }
 .plan-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 18px; margin: 0; padding: 0; list-style: none; }
 .plan-items li { display: grid; gap: 2px; font-size: 0.88rem; min-width: 0; }
 .plan-items b { font-family: var(--f-data); font-weight: 500; }
@@ -391,6 +397,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       if (r.heat) top.append(heat(r.heat));
       const facts = el("div", "facts");
       if (r.amount) facts.append(el("span", "amount", "Put in " + money(r.amount)));
+      const overLine = r.overBudget ? el("p", "over", "Worth going over your weekly $500: " + money(r.overBudget) + " of this is extra.") : null;
       if (r.price != null) facts.append(el("span", "num", money(r.price)));
       if (r.upsidePct != null) facts.append(el("span", "num " + signCls(r.upsidePct), "Analyst target " + pct(r.upsidePct)));
       if (r.dividendYield) facts.append(el("span", "num", "Yield " + Number(r.dividendYield).toFixed(2) + "%"));
@@ -398,7 +405,9 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
       if (r.conviction) facts.append(el("span", "muted", r.conviction + " conviction"));
       if (r.risk) facts.append(el("span", "muted", r.risk + " risk"));
       if (r.tvRating) facts.append(el("span", "muted", "TradingView: " + r.tvRating));
-      c.append(top, facts, el("p", null, r.rationale || ""));
+      c.append(top, facts);
+      if (overLine) c.append(overLine);
+      c.append(el("p", null, r.rationale || ""));
       if (r.exitPlan) c.append(el("p", "exit", "Exit plan: " + r.exitPlan));
       if (r.watchFor) c.append(el("div", "watch", "Watch: " + r.watchFor));
       if (r.debate && (r.debate.bull || r.debate.bear)) {
@@ -414,21 +423,36 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 80ch; }
   }
 
   function renderPlan() {
-    const b = current(), box = $("plan"), mp = b && b.monthlyPlan;
-    if (!mp || !(mp.items || []).length) { box.hidden = true; return; }
-    const total = mp.budget || mp.items.reduce((s, i) => s + (i.amount || 0), 0);
+    const b = current(), box = $("plan");
+    const wp = b && (b.weeklyPlan || b.monthlyPlan);
+    if (!wp || !(wp.items || []).length) { box.hidden = true; return; }
+    const weekly = !!b.weeklyPlan;
+    const items = wp.items;
+    const sum = (k) => items.filter(i => (i.kind || (i.park ? "index" : "stock")) === k).reduce((s, i) => s + (i.amount || 0), 0);
+    const total = items.reduce((s, i) => s + (i.amount || 0), 0);
     const head = el("div", "plan-head");
-    head.append(el("h3", null, "This month's " + money(total)), el("span", "eyebrow", mp.note || ""));
-    head.querySelector("h3").style.margin = "0";
-    const bar = el("div", "plan-bar");
+    const h3 = el("h3", null, (weekly ? "This week's " : "This month's ") + money(wp.budget || 500)); h3.style.margin = "0";
+    head.append(h3);
+    if (weekly) head.append(el("span", "eyebrow", "Index funds " + money(sum("index")) + " · Stocks " + money(sum("stock")) + (wp.overBudget ? " · Over budget " + money(wp.overBudget) : "")));
+    const parts = [head];
+    if (wp.overBudget) {
+      const alert = el("p", "over");
+      alert.append(heat(5), document.createTextNode(" Strong deal this week: worth going " + money(wp.overBudget) + " over your $500 (" + money(total) + " total)."));
+      parts.push(alert);
+    }
+    const bar = el("div", "plan-bar"); bar.setAttribute("aria-hidden", "true");
     const list = el("ul", "plan-items");
-    mp.items.forEach(i => {
-      const seg = el("span", i.park ? "park" : ""); seg.style.flex = String(i.amount || 0); seg.title = i.ticker + " " + money(i.amount); bar.append(seg);
+    items.forEach(i => {
+      const kind = i.kind || (i.park ? "index" : "stock");
+      const seg = el("span", kind === "index" ? "idx-seg" : ""); seg.style.flex = String(i.amount || 0); bar.append(seg);
       const li = el("li"); const t = el("div"); t.append(el("b", null, i.ticker + " · " + money(i.amount)));
+      t.append(document.createTextNode(" "), el("span", "kind " + kind, kind === "index" ? "Index fund" : "Stock"));
       if (i.heat) { t.append(document.createTextNode(" ")); t.append(heat(i.heat)); }
       li.append(t, el("span", "muted", i.why || "")); list.append(li);
     });
-    box.replaceChildren(head, bar, list); box.hidden = false;
+    parts.push(bar, list);
+    if (wp.note) parts.push(el("p", "muted", wp.note));
+    box.replaceChildren(...parts); box.hidden = false;
   }
 
   const SVGNS = "http://www.w3.org/2000/svg";
